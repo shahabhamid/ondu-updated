@@ -10,7 +10,8 @@
     "ios": "expo build:ios",
     "build": "expo build:android && expo build:ios",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",

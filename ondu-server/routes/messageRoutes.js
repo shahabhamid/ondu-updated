@@ -76,8 +76,9 @@ router.post("/getmessages", async (req, res) => {
       console.log(err);
     });
 });
+
 router.post("/setusermessages", async (req, res) => {
-  const { ouruserid, fuserid, lastmessage, roomid, type, mimeType, fileName } =
+  const { senderid, recieverid, message, roomid, type, mimeType, fileName } =
     req.body;
   console.log("MESSAGE ID RECEIVED - ", fuserid);
   User.findOne({ _id: ouruserid })
@@ -89,9 +90,9 @@ router.post("/setusermessages", async (req, res) => {
       // });
       const date = Date.now();
       user.allMessages.push({
-        ouruserid,
-        fuserid,
-        lastmessage,
+        senderid,
+        recieverid,
+        message,
         roomid,
         date,
         type,

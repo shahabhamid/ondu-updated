@@ -15,7 +15,7 @@ import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 
-const socket = io("http://192.168.100.7:3001");
+const socket = io("http://192.168.0.105:3001");
 import Colors from "../../constants/colors";
 import apis from "../../constants/static-ip";
 import CustomBubble from "../../components/bubble-custom";
@@ -31,14 +31,14 @@ export default function Message({ navigation, route }) {
   const { data } = route.params;
   const [error, setError] = useState(null);
 
-  const [ourUserData, setOuruserdata] = React.useState(null);
-  const [fuserdata, setFuserdata] = React.useState(null);
+  const [ourUserData, setOurUserData] = useState([]);
+  const [fuserdata, setFuserData] = useState([]);
 
-  const [userid, setUserid] = React.useState(null);
-  const [roomid, setRoomid] = React.useState(null);
-  const [chat, setChat] = React.useState([""]);
+  const [userid, setUserid] = useState(null);
+  const [roomid, setRoomid] = useState(null);
+  const [chat, setChat] = useState([]);
   const [image, setImage] = useState(null);
-  const [currentmessage, setCurrentmessage] = React.useState(null);
+  const [currentmessage, setCurrentmessage] = useState("");
 
   // OUR ID & ROOM ID FOR SOCKET.IO
   const handleImageUpload = async () => {
@@ -56,7 +56,7 @@ export default function Message({ navigation, route }) {
 
       if (!response.canceled) {
         //  setProfileImage(response.assets[0]);
-        console.log(response.assets[0].uri);
+        // console.log(response.assets[0].uri);
         setCurrentmessage(response.assets[0].uri);
         setImage(response.assets[0].uri);
         //socket.emit("send_message", currentmessage);
@@ -110,12 +110,13 @@ export default function Message({ navigation, route }) {
   //     }
   //   }
   // }, [scrollEnd]);
-  useEffect(() => {
-    socket.on("receive_message", (data) => {
-      // console.log("recieved message - ", data);
-      loadMessages(roomid);
-    });
-  }, [socket]);
+
+  // useEffect(() => {
+  //   socket.on("receive_message", (data) => {
+  //     // console.log("recieved message - ", data);
+  //     loadMessages(roomid);
+  //   });
+  // }, [socket]);
 
   const sortroomid = (id1, id2) => {
     if (id1 > id2) {
@@ -124,13 +125,13 @@ export default function Message({ navigation, route }) {
       return id2 + id1;
     }
   };
-  useEffect(() => {
-    socket.emit("sendNotification", {
-      recipientUserId: "63dff804a34f81821ac63539",
-      title: "Notification Title",
-      body: "Notification Body",
-    });
-  }, []);
+  // useEffect(() => {
+  //   socket.emit("sendNotification", {
+  //     recipientUserId: "63dff804a34f81821ac63539",
+  //     title: "Notification Title",
+  //     body: "Notification Body",
+  //   });
+  // }, []);
   useEffect(() => {
     loadMessages(roomid);
     if (scrollEnd) {
@@ -141,73 +142,138 @@ export default function Message({ navigation, route }) {
   }, [chat]);
 
   const loaddata = async () => {
-    await AsyncStorage.getItem("user")
-      .then(async (value) => {
-        fetch(apis + "userdata", {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.error("Token not found");
+        navigation.navigate("Login");
+        return;
+      }
+
+      const response1 = await fetch(apis + "/userdata", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        // body: JSON.stringify({ email: JSON.parse(value).user.email }),
+      });
+
+      if (!response1.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const data1 = await response1.json();
+      // console.log("data1:", data1);
+
+      // if (data1.message === "User Found") {
+      if (data1.user && data1.user.username) {
+        // console.log("Our user data:", data1.user.username);
+        setOurUserData(data1.user);
+        // console.log('user data', ourUserData)
+        setUserid(data1.user._id);
+
+        const response2 = await fetch(apis + "/otheruserdata", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + JSON.parse(value).token,
           },
-          body: JSON.stringify({ email: JSON.parse(value).user.email }),
-        })
-          .then((res) => res.json())
-          .then((dat) => {
-            if (dat.message == "User Found") {
-              console.log("our user data ", dat.user.username);
-              setOuruserdata(dat.user);
-              setUserid(dat.user._id);
-              console.log(ourUserData);
-              fetch(apis + "otheruserdata", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email: data.user.email }),
-              })
-                .then((res) => res.json())
-                .then(async (data1) => {
-                  if (data1.message == "User Found") {
-                    console.log("fuser data ", data1.user.username);
-                    setFuserdata(data1.user);
-                    let temproomid = await sortroomid(
-                      data.user._id,
-                      dat.user._id
-                    );
+          body: JSON.stringify({ username: data.username }),
+        });
+        // console.log('res2',response2)
+        if (!response2.ok) {
+          throw new Error("Network response was not ok");
+        }
 
-                    setRoomid(temproomid);
-                    console.log("room id ", temproomid);
-                    socket.emit("join_room", { roomid: temproomid });
-                    loadMessages(temproomid);
-                    //  scrollViewRef.current.scrollToEnd({ animated: true });
-                  } else {
-                    alert("User Not Found");
-                    navigation.navigate("HomePage");
-                    // navigation.navigate('Login')
-                  }
-                })
-                .catch((e) => setError(e))
-                .catch((err) => {
-                  // console.log(err)
-                  alert("Something Went Wrong");
-                  navigation.navigate("HomePage");
-                });
-            } else {
-              alert("Login Again");
-              navigation.navigate("Login");
-            }
-          })
-          .catch((err) => {
-            navigation.navigate("Login");
-          });
-      })
-      .catch((err) => {
+        const data2 = await response2.json();
+
+        if (data2.message === "User Found") {
+          // console.log("Fuser data:", data.username);
+          setFuserData(data2.user);
+          // console.log('id1 '+ data1.user._id + ' id2 '+ data2.user._id)
+          const temproomid = await sortroomid(data1.user._id, data2.user._id);
+          setRoomid(temproomid);
+          // console.log("Room ID:", temproomid);
+          socket.emit("join_room", { roomid: temproomid });
+          loadMessages(temproomid);
+          // scrollViewRef.current.scrollToEnd({ animated: true });
+        } else {
+          alert("User Not Found");
+          navigation.navigate("HomePage");
+        }
+      } else {
+        alert("Login Again");
         navigation.navigate("Login");
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      navigation.navigate("Login");
+    }
+  };
+
+  const sendMessage = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("senderid", userid);
+      formData.append("message", currentmessage);
+      formData.append("roomid", roomid);
+      formData.append("recieverid", data._id);
+      // console.log("formdata", data._id + " " + userid);
+
+      if (image) {
+        formData.append("image", {
+          uri: image,
+          type: "image/png",
+          name: Date.now().toFixed(10) + "image.png",
+        });
+        formData.append("type", "image");
+        formData.append("mimeType", "image/png");
+        formData.append("fileName", Date.now().toFixed(10) + "image.png");
+      } else {
+        formData.append("type", "text");
+        formData.append("mimeType", "");
+        formData.append("fileName", "");
+      }
+
+      const res = await fetch(apis + "/savemessagetodb", {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
       });
+
+      if (res.ok) {
+        const dat = await res.json();
+        // console.log('dat',dat);
+
+        if (dat.message === "Message saved successfully") {
+          // console.log("Message:" + roomid);
+          socket.emit("send_message", currentmessage);
+          loadMessages(roomid);
+          console.log("Message sent successfully");
+        }
+
+        // Add notification logic here (if required)
+        // ...
+
+        // Reset current message and image state after successful sending
+        setCurrentmessage("");
+        setImage("");
+      } else {
+        console.error("Network error occurred while sending message");
+        setCurrentmessage("");
+        setImage("");
+      }
+    } catch (error) {
+      console.error("Error sending message: ", error);
+      setCurrentmessage("");
+      setImage("");
+    }
   };
 
   const loadMessages = (temproomid) => {
-    fetch(apis + "getmessages", {
+    fetch(apis + "/getmessages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -218,7 +284,7 @@ export default function Message({ navigation, route }) {
 
       .then((data) => {
         setChat(data);
-        handleNewMessage;
+        handleNewMessage();
         // scrollViewRef.current.scrollToEnd({ animated: true });
       })
       .catch((e) => setError(e));
@@ -262,7 +328,7 @@ export default function Message({ navigation, route }) {
               },
             ]}
           >
-            {data.user.username}
+            {data.username}
           </Text>
           <ScrollView
             ref={scrollViewRef}
@@ -272,8 +338,8 @@ export default function Message({ navigation, route }) {
             {chat.map((item, index) => {
               return (
                 <View style={styles.message} key={index}>
-                  {item.senderId == userid && item.type === "text" && (
-                    <View style={styles.messageRight}>
+                  {item.senderid == userid && item.type === "text" && (
+                    <View style={styles.messageLeft}>
                       {ourUserData.profile_pic_name === "" ? (
                         <Ionicons
                           style={{
@@ -294,15 +360,15 @@ export default function Message({ navigation, route }) {
                           source={{ uri: ourUserData.profile_pic_name }}
                         />
                       )}
-                      <Text style={styles.messageTextRight}>
+                      <Text style={styles.messageTextLeft}>
                         {item.message}
                       </Text>
                     </View>
                   )}
-                  {item.senderId != userid &&
+                  {item.senderid != userid &&
                     item.type === "text" &&
                     item != "" && (
-                      <View style={styles.messageLeft}>
+                      <View style={styles.messageRight}>
                         {fuserdata.profile_pic_name === "" ? (
                           <Ionicons
                             style={{
@@ -323,14 +389,14 @@ export default function Message({ navigation, route }) {
                             source={{ uri: fuserdata.profile_pic_name }}
                           />
                         )}
-                        <Text style={styles.messageTextLeft}>
+                        <Text style={styles.messageTextRight}>
                           {item.message}
                         </Text>
                       </View>
                     )}
 
-                  {item.senderId == userid && item.type === "image" && (
-                    <View style={styles.messageRight}>
+                  {item.senderid == userid && item.type === "image" && (
+                    <View style={styles.messageLeft}>
                       {ourUserData.profile_pic_name === "" ? (
                         <Ionicons
                           style={{
@@ -363,10 +429,10 @@ export default function Message({ navigation, route }) {
                       />
                     </View>
                   )}
-                  {item.senderId != userid &&
+                  {item.senderid != userid &&
                     item.type === "image" &&
                     item != "" && (
-                      <View style={styles.messageLeft}>
+                      <View style={styles.messageRight}>
                         {fuserdata.profile_pic_name === "" ? (
                           <Ionicons
                             style={{

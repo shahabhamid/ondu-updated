@@ -20,7 +20,7 @@ import { language } from "../../constants/language";
 import apis from "../../constants/static-ip";
 import CustomBubble from "../../components/bubble-custom";
 
-export default function AllFriends({ navigation, route }) {
+export default function AllFriends({ navigation }) {
   const [error, setError] = useState(null);
   const [userDataAgain, setUserDataAgain] = React.useState([]);
   // const { data } = route.params;
@@ -42,11 +42,23 @@ export default function AllFriends({ navigation, route }) {
       setError(err);
     }
   };
-  useEffect(() => {
-    getLang();
-    fetchArray();
-  }, []);
+  // useEffect(() => {
+  //   getLang();
+  //   fetchArray();
+  // }, []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await getLang();
+        await fetchArray();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError(error);
+      }
+    };
+    fetchData();
+  }, []);
 
   if (error) {
     return (
@@ -116,7 +128,7 @@ export default function AllFriends({ navigation, route }) {
             }}
             source={require("../../assets/chat-bubll.png")}
           />
-          {item.user.profile_pic_name === "" ? (
+          {item.profile_pic_name === "" ? (
             <Ionicons
               style={{
                 marginTop: 10,
@@ -144,7 +156,7 @@ export default function AllFriends({ navigation, route }) {
                 height: "30%",
                 borderRadius: 360,
               }}
-              source={{ uri: item.user.profile_pic_name }}
+              source={{ uri: item.profile_pic_name }}
             />
           )}
           <Text
@@ -163,7 +175,7 @@ export default function AllFriends({ navigation, route }) {
               },
             ]}
           >
-            @{item.user.username}
+            @{item.username}
           </Text>
         </Pressable>
       </View>
@@ -193,7 +205,8 @@ export default function AllFriends({ navigation, route }) {
       <View style={styles.container}>
         <FlatList
           style={styles.userLists}
-          data={userDataAgain}
+          // data={userDataAgain}
+          data={array}
           numColumns={2}
           keyExtractor={(_, item) => item}
           renderItem={({ item, index }) => {

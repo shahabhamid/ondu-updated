@@ -15,7 +15,7 @@ const messageSchema = new mongoose.Schema(
     },
     roomid: {
       type: String,
-      required: true,
+      // required: true,
     },
     recieverid: {
       type: String,

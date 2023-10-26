@@ -4,12 +4,16 @@ require("dotenv").config();
 
 const getUsers = async ({ username }) => {
     const query = username ? { username: { $regex: username, $options: "i" } } : {};
-    const users = await User.find(query, {
+    const users = await User.find(query
+        , {
         _id: 1,
         name: 1,
         username: 1,
         profile_pic_name: 1,
-    })
+        followers: 1,
+        following: 1,
+    }
+    )
     return users
 }
 

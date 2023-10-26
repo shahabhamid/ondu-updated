@@ -16,10 +16,10 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: String,
   },
-  // deviceToken: {
-  //   type: String,
-  //   required: true,
-  // },
+  token: {
+    type: String,
+    // required: true,
+  },
   // email: {
   //   type: String,
   //   required: true,

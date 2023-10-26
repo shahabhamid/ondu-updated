@@ -317,7 +317,46 @@ router.post("/setlink", (req, res) => {
 
 // get other user
 
-router.get("auth/:username", (req, res) => {
+router.post("/otheruserdata", (req, res) => {
+  // const { email } = req.body;
+  const { username } = req.body;
+
+  // User.findOne({ email: email }).then((saveduser) => {
+  User.findOne({ username: username }).then((saveduser) => {
+    if (!saveduser) {
+      return res.status(422).json({ error: "Invalid Credentials" });
+    }
+    //    console.log(saveduser);
+
+    let data = {
+      _id: saveduser._id,
+      username: saveduser.username,
+      name: saveduser.name,
+      deviceToken: saveduser.token,
+      // email: saveduser.email,
+      profile_pic_name: saveduser.profile_pic_name,
+      bio: saveduser.bio,
+      links: saveduser.links,
+      followers: saveduser.followers,
+      following: saveduser.following,
+      allmessages: saveduser.allmessages,
+      allevents: saveduser.allevents,
+      accevents: saveduser.accevents,
+      passwordResetToken: saveduser.passwordResetToken,
+      passwordResetExpires: saveduser.passwordResetExpires,
+      acceventsfrom: saveduser.acceventsfrom,
+    };
+
+    // console.log(data);
+
+    res.status(200).send({
+      user: data,
+      message: "User Found",
+    });
+  });
+});
+
+router.get("/auth/:username", (req, res) => {
   console.log(req.params.username);
   User.findOne({ username: req.params.username }, (err, user) => {
     if (err) {

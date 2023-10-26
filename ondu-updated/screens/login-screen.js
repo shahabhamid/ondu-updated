@@ -40,9 +40,9 @@ export default function LoginScreen({ navigation }) {
         })).data
         console.log(data, 'data')
         await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        await AsyncStorage.setItem("token", JSON.stringify(data.token));
+        await AsyncStorage.setItem("token", (data.token));
         Toast.hide(toast);
-        navigation.navigate("HomePage", { data });
+        navigation.navigate("HomePage");
       } catch (error) {
         console.log(JSON.stringify(error), 'Error - Login Screen');
         Alert.alert(error.status == 401 ? 'Invalid Credentials' : error.message);

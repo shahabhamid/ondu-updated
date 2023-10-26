@@ -15,6 +15,7 @@ const SignUp = async ({ username, name, password }) => {
     });
     const save = await user.save();
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
+    await User.findOneAndUpdate({ _id: user._id }, { token: token }, { new: true })   
     return {
         message: "User Registered Successfully",
         token,
