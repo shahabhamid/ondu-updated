@@ -284,7 +284,7 @@ export default function Message({ navigation, route }) {
 
       .then((data) => {
         setChat(data);
-        handleNewMessage();
+        handleNewMessage;
         // scrollViewRef.current.scrollToEnd({ animated: true });
       })
       .catch((e) => setError(e));
