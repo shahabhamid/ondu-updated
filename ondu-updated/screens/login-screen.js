@@ -16,31 +16,29 @@ import axios from 'axios'
 import apis from "../constants/static-ip";
 import { Image } from "react-native";
 import Toast from 'react-native-root-toast'
+import { FIRBASE_AUTH } from "../Firebase/firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
 export default function LoginScreen({ navigation }) {
 
-  const [username, setUsername] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [errorMsg, setErrorMsg] = React.useState(null);
   const passRef = React.useRef();
+  const auth = FIRBASE_AUTH;
 
-  const loginUser = async () => {
-    if (username == "" || password == "") {
-      alert("Please enter username and password");
+  const loginUser = async () =>{
+    if (email == "" || password == "") {
+      alert("Please enter email and password");
     } else {
       try {
         let toast = Toast.show('Authenticating...', {
           duration: Toast.durations.LONG,
         });
-        const data = (await axios.post(`${apis}/signin`, {
-          username: username,
-          password,
-        })).data
+        const data = await signInWithEmailAndPassword(auth, email, password)
         console.log(data, 'data')
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        await AsyncStorage.setItem("token", (data.token));
         Toast.hide(toast);
         navigation.navigate("HomePage");
       } catch (error) {
@@ -48,8 +46,7 @@ export default function LoginScreen({ navigation }) {
         Alert.alert(error.status == 401 ? 'Invalid Credentials' : error.message);
       }
     }
-  };
-
+  }
   return (
     <LinearGradientComponent>
       <View style={styles.rootScreen}>
@@ -66,9 +63,10 @@ export default function LoginScreen({ navigation }) {
           onSubmitEditing={() => passRef?.current?.focus()}
           style={styles.input}
           onPressIn={() => setErrorMsg(null)}
-          onChangeText={(text) => setUsername(text)}
-          placeholder="Username"
-          autoCorrect={false}
+          onChangeText={(text) => setEmail(text)}
+          placeholder="Email"
+          autoComplete="email"
+          keyboardType="email-address"
           returnKeyType={"next"}
         />
         <TextInput

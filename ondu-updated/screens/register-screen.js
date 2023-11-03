@@ -15,8 +15,10 @@ import LinearGradientComponent from "../components/linear-gradient-component";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import apis from "../constants/static-ip";
 import { Image } from "react-native";
-import axios from 'axios'
 import Toast from "react-native-root-toast";
+import { FIRBASE_AUTH, FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { set, get, ref, query, orderByChild, equalTo } from "firebase/database";
 const { width, height } = Dimensions.get("window");
 
 export default function RegisterScreen({ navigation }) {
@@ -24,35 +26,71 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = React.useState("");
   const [username, setUsername] = React.useState("");
   const [errorMsg, setErrorMsg] = React.useState(null);
+  const [email, setEmail] = React.useState("");
   const usernameRef = React.useRef();
   const passRef = React.useRef();
+  const auth = FIRBASE_AUTH;
+  const db = FIREBASE_DATABASE;
 
   const handleSubmit = async () => {
-    if (username == "" || name == "" || password == "") {
+    if (username == "" || name == "" || password == "" || email == "") {
       setErrorMsg("All fields are required");
       return;
     } else {
-      let toast = Toast.show('Creating Account...', {
+      let toast = Toast.show("Creating Account...", {
         duration: Toast.durations.LONG,
       });
       try {
-        const data = await axios.post(`${apis}/signup`, {
-          name: name,
-          password: password,
-          username: username
-        })
+      // Check if the username already exists
+      const usernameRef = ref(db, "users");
+      const usernameQuery = query(usernameRef, orderByChild("username"), equalTo(username));
+      const usernameSnapshot = await get(usernameQuery);
 
-        await AsyncStorage.setItem("user", JSON.stringify(data.data.user));
-        await AsyncStorage.setItem("token", JSON.stringify(data.data.token));
+      if (usernameSnapshot.exists()) {
         Toast.hide(toast);
+        setErrorMsg("Username already exists. Please choose a different username.");
+        return;
+      }
+
+        const response = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const userID = response.user.uid;
+        // console.log(userID, "user");
+
+        const data = {
+          _id: userID,
+          username: username,
+          name: name,
+          email: email,
+          profile_pic_name: "",
+          bio: "",
+          links: "",
+          followers: "",
+          following: "",
+          accountEvents: "",
+          accountEventsFrom: "",
+          token: "",
+        };
+
+        // Store the user data object in Firebase Realtime Database
+        const usersRef = ref(db, "users/"+ userID); 
+        await set(usersRef, data);
+
+        Toast.hide(toast);
+        setName("");
+        setUsername("");
+        setPassword("");
+        setEmail("");
         navigation.navigate("HomePage", { data });
       } catch (error) {
-        console.log(error, 'error')
+        console.log(error, "error");
         setErrorMsg(error.message);
       }
     }
   };
-
   return (
     <LinearGradientComponent>
       <SafeAreaView style={styles.rootScreen}>
@@ -91,6 +129,17 @@ export default function RegisterScreen({ navigation }) {
           }}
           style={styles.input}
           onPressIn={() => setErrorMsg(null)}
+          onChangeText={(text) => setEmail(text)}
+          placeholder="Email"
+          autoComplete="email"
+          keyboardType="email-address"
+        />
+        <TextInput
+          onSubmitEditing={() => {
+            handleSubmit();
+          }}
+          style={styles.input}
+          onPressIn={() => setErrorMsg(null)}
           onChangeText={(texts) => setPassword(texts)}
           placeholder="Password"
           secureTextEntry={true}
@@ -103,7 +152,7 @@ export default function RegisterScreen({ navigation }) {
         >
           Register
         </PrimaryButton>
-        <Pressable onPress={() => { }}>
+        <Pressable onPress={() => {}}>
           <Text style={(styles.accountText, { marginTop: 50 })}>
             {"Already have an account?"}
           </Text>

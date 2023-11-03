@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import SplashScreen from "./screens/splash-screen";
 import LoginScreen from "./screens/login-screen";
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import RegisterScreen from './screens/register-screen';
 import HomePage from './screens/home-page-screen';
@@ -23,6 +23,25 @@ import Message from './screens/all-chats/message';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  // const [user, setUser] =useState(null)
+
+  // useEffect(() => {
+  //   const unsubscribe = auth.onAuthStateChanged((authUser) => {
+  //     if (authUser) {
+  //       setUser(authUser)
+  //       if (authUser.displayName) {
+  //         //dont update username
+  //       } else {
+  //         return authUser.updateProfile({
+  //           displayName: name,
+  //         });
+  //       }
+  //     } else {
+  //       setUser(null)
+  //     }
+  //   });
+  //   return unsubscribe;
+  // }, [user, name]);
 
   const [fontsLoaded] = useFonts({
     "GothicA1-Bold": require("./fonts/GothicA1-Bold.ttf"),

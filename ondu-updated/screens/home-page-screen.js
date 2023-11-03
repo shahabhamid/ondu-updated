@@ -1,13 +1,5 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
-import {
-  Animated,
-  Dimensions,
-  StyleSheet,
-  View,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { Animated, Dimensions, StyleSheet, View } from "react-native";
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
@@ -17,12 +9,39 @@ import Bubble from "../components/bubble";
 import { language } from "../constants/language";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
+import { FIRBASE_AUTH, FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { get, ref } from "firebase/database";
 const { width, height } = Dimensions.get("window");
 function HomePage() {
   const [selectLan, setSelectLan] = useState(0);
+  const [userID, setUserID] = useState("");
   const [leftBubbleAnim, setLeftBubbleAnim] = useState(new Animated.Value(0));
   const [rightBubbleAnim, setRightBubbleAnim] = useState(new Animated.Value(0));
   const navigation = useNavigation();
+  const auth = FIRBASE_AUTH;
+  const db = FIREBASE_DATABASE;
+
+  // console.log(auth.currentUser.uid, "auth.currentUser");
+
+  useEffect(() => {
+    const getUserData = async () => {
+      if (auth.currentUser) {
+        setUserID(auth.currentUser.uid);
+        console.log(userID, "userID");
+
+        const usersRef = ref(db, "users/" + userID);
+        const dataSnapshot = await get(usersRef);
+        if (dataSnapshot.exists()) {
+          // console.log(dataSnapshot.val());
+          const userData = dataSnapshot.val();
+          await AsyncStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          console.log("No data available");
+        }
+      }
+    };
+    getUserData();
+  }, [userID]);
 
   useEffect(() => {
     getLang();
@@ -45,7 +64,9 @@ function HomePage() {
     }).start();
   }, []);
 
-  const getWidth = (x) => { return Number(Math.floor(width / 100 * x)) }
+  const getWidth = (x) => {
+    return Number(Math.floor((width / 100) * x));
+  };
   return (
     <View style={{ flex: 1, height: height }}>
       <Bubble
@@ -56,10 +77,7 @@ function HomePage() {
           }),
         }}
         onPress={() =>
-          navigation.navigate(
-            "allFriends",
-            { disabledAnimation: true }
-          )
+          navigation.navigate("allFriends", { disabledAnimation: true })
         }
         bubbleStyle={{
           top: hp("10%"),
