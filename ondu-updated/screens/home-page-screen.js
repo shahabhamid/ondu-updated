@@ -27,7 +27,7 @@ function HomePage() {
     const getUserData = async () => {
       if (auth.currentUser) {
         setUserID(auth.currentUser.uid);
-        console.log(userID, "userID");
+        // console.log(userID, "userID");
 
         const usersRef = ref(db, "users/" + userID);
         const dataSnapshot = await get(usersRef);

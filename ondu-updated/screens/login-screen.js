@@ -38,8 +38,10 @@ export default function LoginScreen({ navigation }) {
           duration: Toast.durations.LONG,
         });
         const data = await signInWithEmailAndPassword(auth, email, password)
-        console.log(data, 'data')
+        // console.log(data, 'data')
         Toast.hide(toast);
+        setEmail("");
+        setPassword("");
         navigation.navigate("HomePage");
       } catch (error) {
         console.log(JSON.stringify(error), 'Error - Login Screen');

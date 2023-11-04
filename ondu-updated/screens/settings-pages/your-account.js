@@ -15,19 +15,27 @@ import { language } from "../../constants/language";
 import ChangePassword from "../../components/change-password";
 import ChangeUserName from "../../components/change-username";
 import { Alert } from "react-native";
+import { FIRBASE_AUTH } from "../../Firebase/firebaseConfig";
 const { width, height } = Dimensions.get("window");
+import { signOut } from "firebase/auth";
 const size = Math.min(width, height) - 1;
 
 export default function YourAccount({ navigation }) {
   const [selectLan, setSelectLan] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
+  const auth = FIRBASE_AUTH;
 
-  const logout = () => {
-    AsyncStorage.removeItem("user").then(() => {
-      Alert.alert("Logged out successfully");
-      navigation.navigate("Login");
-    });
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      AsyncStorage.removeItem("user").then(() => {
+        Alert.alert("Logged out successfully");
+        navigation.navigate("Login");
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   const progress = useRef(new Animated.Value(0)).current;
