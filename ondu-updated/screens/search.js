@@ -15,6 +15,8 @@ import CustomBubble from "../components/bubble-custom";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 const { width, height } = Dimensions.get("window");
+import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { get, ref } from "firebase/database";
 const size = Math.min(width, height) - 1;
 
 const SearchUserPage = ({ navigation }) => {
@@ -23,16 +25,36 @@ const SearchUserPage = ({ navigation }) => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
 
+  const db = FIREBASE_DATABASE;
   const getUsers = async () => {
     setLoading(true);
     try {
       const loggedUser = JSON.parse(await AsyncStorage.getItem("user"));
-      const users = await axios.get(`${apis}/getUsers`, {
-        params: {
-          username: keyword
+      // console.log(loggedUser.username, ' loggedUser');
+      const usersRef = ref(db, "users");
+      const dataSnapshot = await get(usersRef);
+      if (dataSnapshot.exists()) {
+        const userData = dataSnapshot.val();
+        const specificData = {};
+        for (const userId in userData) {
+          if (userData.hasOwnProperty(userId)) {
+            const user = userData[userId];
+            specificData[userId] = {
+              _id: user._id || "",
+              username: user.username || "",
+              name: user.name || "",
+              profile_pic_name: user.profile_pic_name || "",
+              followers: user.followers || "",
+              following: user.following || "",
+            };
+          }
         }
-      })
-      setData(users.data && users.data?.filter(user => user.username != loggedUser.username));
+        setData(Object.values(specificData).filter(user => user.username != loggedUser.username));
+        // console.log(data, "data")
+      }
+      else {
+        console.log("No data available");
+      }
     } catch (error) {
       setError(error.message);
       console.log(error);
@@ -43,7 +65,6 @@ const SearchUserPage = ({ navigation }) => {
   useEffect(() => {
     getUsers();
   }, [keyword]);
-
 
   return (
     <CustomBubble
@@ -67,15 +88,17 @@ const SearchUserPage = ({ navigation }) => {
               <Text>{error}</Text>
             ) : (
               <ScrollView style={styles.userLists}>
-                {data && data.map((item, index) => {
-                  return (
-                    <UserCard
-                      key={item.username}
-                      user={item}
-                      navigation={navigation}
-                    />
-                  );
-                })}
+                {data &&
+                  data.map((item, index) => {
+                    {console.log(item, "item")}
+                    return (
+                      <UserCard
+                        key={item.username}
+                        user={item}
+                        navigation={navigation}
+                      />
+                    );
+                  })}
               </ScrollView>
             )}
           </>

@@ -15,6 +15,8 @@ import Colors from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import apis from "../../constants/static-ip";
 import axios from "axios";
+import { FIREBASE_DATABASE } from "../../Firebase/firebaseConfig";
+import { set, get, ref, remove } from "firebase/database";
 
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
@@ -23,17 +25,47 @@ export default function OtherUser({ navigation, route }) {
   const [userData, setUserData] = React.useState(null);
   const { user } = route.params;
   const [isFollowing, setFollowing] = React.useState(false);
+  const db = FIREBASE_DATABASE;
 
   const loadData = async () => {
     try {
       const loggedUserObj = JSON.parse(await AsyncStorage.getItem("user"));
-      const getUser = await axios.get(`${apis}/getUser`, {
-        params: {
-          username: user.username
+
+      const usersRef = ref(db, "users");
+      const dataSnapshot = await get(usersRef);
+      const specificData = {};
+      if (dataSnapshot.exists()) {
+        const userData = dataSnapshot.val();
+        for (const userId in userData) {
+          if (userData.hasOwnProperty(userId)) {
+            const users = userData[userId];
+            if (users.username === user.username) {
+              specificData[userId] = {
+                _id: users._id || "",
+                username: users.username || "",
+                name: users.name || "",
+                profile_pic_name: users.profile_pic_name || "",
+                followers: users.followers || "",
+                following: users.following || "",
+              };
+            }
+          }
         }
-      })
-      setUserData(getUser.data);
-      setFollowing(getUser.data.followers.includes(loggedUserObj.username))
+      } else {
+        console.log("No data available");
+      }
+      const data = Object.values(specificData)
+      setUserData(data);
+
+      const followersData = data[0].followers;
+      for (const key in followersData) {
+        if (followersData.hasOwnProperty(key)) {
+          const element = followersData[key];
+          if (element.username === loggedUserObj.username) {
+            setFollowing(true);
+          }
+        }
+      }
     } catch (error) {
       Alert.alert("Something Went Wrong");
       navigation.navigate("search");
@@ -43,11 +75,18 @@ export default function OtherUser({ navigation, route }) {
   const FollowThisUser = async () => {
     try {
       const loggedUserObj = JSON.parse(await AsyncStorage.getItem("user"));
-      await axios.post(`${apis}/followUser`, {
-        followFrom: loggedUserObj.username,
-        followTo: userData.username
-      })
-      setFollowing(true)
+      const followFromId= loggedUserObj._id;
+      const followFrom= {username:loggedUserObj.username};
+      const followToId= userData[0]._id;
+      const followTo= {username: userData[0].username};
+
+      const followingRef = ref(db, `users/${followFromId}` + "/following/" + followToId);
+      await set(followingRef, followTo);
+
+      const followersRef = ref(db, `users/${followToId}` + "/followers/" + followFromId);
+      await set(followersRef, followFrom);
+
+      setFollowing(true);
       Alert.alert("User Followed");
     } catch (error) {
       Alert.alert("Something went wrong");
@@ -57,17 +96,21 @@ export default function OtherUser({ navigation, route }) {
   const UnFollowThisUser = async () => {
     try {
       const loggedUserObj = JSON.parse(await AsyncStorage.getItem("user"));
-      await axios.post(`${apis}/unFollowUser`, {
-        followFrom: loggedUserObj.username,
-        followTo: userData.username
-      })
-      setFollowing(false)
+      const followFromId= loggedUserObj._id;
+      const followToId= userData[0]._id;
+
+      const followingRef = ref(db, `users/${followFromId}` + "/following/" + followToId);
+      remove(followingRef);
+
+      const followersRef = ref(db, `users/${followToId}` + "/followers/" + followFromId);
+      remove(followersRef);
+
+      setFollowing(false);
       Alert.alert("User UnFollowed");
     } catch (error) {
       Alert.alert("Something went wrong");
     }
   };
-
 
   const progress = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0)).current;
@@ -98,38 +141,41 @@ export default function OtherUser({ navigation, route }) {
             marginRight: 30,
             marginTop: 20,
           }}
-        >Events</Text>
+        >
+          Events
+        </Text>
         <ScrollView style={{ marginTop: size / 25, marginBottom: size / 8 }}>
-          {userData.allEvents && userData.allEvents.map((event, index) => (
-            <View
-              style={{
-                flex: 1,
-                alignItems: "center",
-                flexDirection: "row",
-                marginLeft: size / 3.5,
-              }}
-              key={index}
-            >
+          {userData.allEvents &&
+            userData.allEvents.map((event, index) => (
               <View
                 style={{
-                  height: 10,
-                  width: 10,
-                  borderRadius: 360,
-                  backgroundColor: Colors.pink,
+                  flex: 1,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  marginLeft: size / 3.5,
                 }}
-              ></View>
-              <Text
-                style={{
-                  color: Colors.brown,
-                  fontSize: 28,
-                  textAlign: "left",
-                  padding: 5,
-                }}
+                key={index}
               >
-                {event.name}
-              </Text>
-            </View>
-          ))}
+                <View
+                  style={{
+                    height: 10,
+                    width: 10,
+                    borderRadius: 360,
+                    backgroundColor: Colors.pink,
+                  }}
+                ></View>
+                <Text
+                  style={{
+                    color: Colors.brown,
+                    fontSize: 28,
+                    textAlign: "left",
+                    padding: 5,
+                  }}
+                >
+                  {event.name}
+                </Text>
+              </View>
+            ))}
         </ScrollView>
       </Animated.View>
       <Animated.View
@@ -139,7 +185,8 @@ export default function OtherUser({ navigation, route }) {
           styles.styleCrossBubble,
           { backgroundColor: Colors.brown },
           { opacity: progress, transform: [{ scale }] },
-        ]}>
+        ]}
+      >
         <Ionicons
           name={"ios-close-outline"}
           color={Colors.white}
@@ -170,7 +217,7 @@ export default function OtherUser({ navigation, route }) {
             numberOfLines={1}
             style={[styles.fonts, { color: Colors.brown }]}
           >
-            @{userData.username}
+            @{userData[0].username}
           </Text>
           <Text
             numberOfLines={2}
