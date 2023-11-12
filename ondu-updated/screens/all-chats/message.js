@@ -40,68 +40,53 @@ export default function Message({ navigation, route }) {
 
   const [userid, setUserid] = useState(null);
   const [roomId, setRoomid] = useState(null);
-  const [chat, setChat] = useState([]);
+  const [chat, setChat] = useState(null);
   const [image, setImage] = useState(null);
   const [currentmessage, setCurrentmessage] = useState("");
 
-  // const loadmessage = async () => {
-  //   try {
-  //     const roomMessagesQuery = query(
-  //       ref(db, "messages"),
-  //       orderByChild("roomid"),
-  //       equalTo(roomId)
-  //     );
-
-  //     const roomMessagesSnapshot = await get(roomMessagesQuery);
-  //     if (roomMessagesSnapshot.exists()) {
-  //       const roomMessagesArray = Object.values(roomMessagesSnapshot.val());
-        
-  //       // Order messages by timestamp
-  //       const sortedMessages = roomMessagesArray.sort((a, b) => {
-  //         return a.createdAt - b.createdAt;
-  //       });
-  
-  //       setChat(sortedMessages);
-  //       handleNewMessage();
-  //     } 
-  //     else {
-  //       console.log("No messages with roomid found");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error in loadmessage:", error);
-  //   }
-  // };
-
   const loadmessage = async () => {
     try {
+      const messagesRef = ref(db, "messages");
       const roomMessagesQuery = query(
-        ref(db, "messages"),
+        messagesRef,
         orderByChild("roomid"),
         equalTo(roomId)
       );
   
-      const roomMessagesRef = ref(db, "messages");
-  
-      const handleDataChange = (snapshot) => {
-        if (snapshot.exists()) {
-          const roomMessagesArray = Object.values(snapshot.val());
-          const sortedMessages = roomMessagesArray.sort(
-            (a, b) => a.createdAt - b.createdAt
-          );
+      console.log(roomId, "roomid")
+      onValue(roomMessagesQuery, (snapshot) => {
+        const messages = snapshot.val();
+        if (messages){
+          const roomMessagesArray = Object.values(messages);
+          const sortedMessages = roomMessagesArray.sort((a, b) => {
+            return a.createdAt - b.createdAt;
+          });
+
           setChat(sortedMessages);
-          handleNewMessage();
-        } else {
+          if (sortedMessages.length > 0) {
+            handleNewMessage();
+          }
+        }
+
+        // if (snapshot.exists()) {
+        //   const roomMessagesArray = Object.values(snapshot.val());
+          
+        //   // Order messages by timestamp
+        //   const sortedMessages = roomMessagesArray.sort((a, b) => {
+        //     return a.createdAt - b.createdAt;
+        //   });
+    
+        //   setChat(sortedMessages);
+        //   if (sortedMessages.length > 0) {
+        //     handleNewMessage();
+        //   }
+
+        //   // handleNewMessage();
+        // } 
+        else {
           console.log("No messages with roomid found");
         }
-      };
-  
-      // Attach the listener
-      onValue(roomMessagesRef, handleDataChange);
-  
-      return () => {
-        // Detach the listener when the component unmounts
-        off(roomMessagesRef, handleDataChange);
-      };
+      });
     } catch (error) {
       console.error("Error in loadmessage:", error);
     }
@@ -121,7 +106,7 @@ export default function Message({ navigation, route }) {
         roomid = msgUser + loggedUserid;
       }
       setRoomid(roomid);
-      console.log(roomid, "roomid");
+      // console.log(roomid, "roomid");
       loadmessage();
     } catch (error) {
       console.error("Error in userRoom:", error);
@@ -206,13 +191,34 @@ export default function Message({ navigation, route }) {
   };
 
   useEffect(() => {
-    // loadMessages(roomid);
-    if (scrollEnd) {
+    // Load messages when roomId changes
+    if (roomId) {
+      loadmessage();
+    }
+  }, [roomId]);
+
+  useEffect(() => {
+    // Check for initial load
+    if (chat === null) {
+      return; // Initial load, skip further processing
+    }
+
+    // Handle new messages
+    if (scrollEnd && chat) {
       if (scrollViewRef.current) {
         scrollViewRef.current.scrollToEnd({ animated: true });
       }
     }
-  }, [chat]);
+  }, [chat, scrollEnd]);
+
+  // useEffect(() => {
+  //   loadmessage();
+  //   if (scrollEnd) {
+  //     if (scrollViewRef.current) {
+  //       scrollViewRef.current.scrollToEnd({ animated: true });
+  //     }
+  //   }
+  // }, [chat]);
 
   if (error) {
     return <Text>An error occurred: {error.message}</Text>;
@@ -260,7 +266,7 @@ export default function Message({ navigation, route }) {
             onMomentumScrollEnd={handleScroll}
             style={styles.messageView}
           >
-            {chat.map((item, index) => {
+            {chat != null && chat.map((item, index) => {
               return (
                 <View style={styles.message} key={index}>
                   {/* {console.log("item", userid )} */}
