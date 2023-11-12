@@ -90,7 +90,7 @@ const SearchUserPage = ({ navigation }) => {
               <ScrollView style={styles.userLists}>
                 {data &&
                   data.map((item, index) => {
-                    {console.log(item, "item")}
+                    // {console.log(item, "item")}
                     return (
                       <UserCard
                         key={item.username}

@@ -19,12 +19,16 @@ import axios from "axios";
 import { language } from "../../constants/language";
 import apis from "../../constants/static-ip";
 import CustomBubble from "../../components/bubble-custom";
+import { FIREBASE_DATABASE } from "../../Firebase/firebaseConfig";
+import { get, ref, set } from "firebase/database";
 
 export default function AllFriends({ navigation }) {
   const [error, setError] = useState(null);
   const [userDataAgain, setUserDataAgain] = React.useState([]);
   // const { data } = route.params;
   const [selectLan, setSelectLan] = useState(0);
+  const [key, setKey] = useState([]);
+  const db = FIREBASE_DATABASE;
 
   const getLang = async () => {
     setSelectLan(parseInt(await AsyncStorage.getItem("LANG")));
@@ -34,31 +38,64 @@ export default function AllFriends({ navigation }) {
     try {
 
       const loggedUser = JSON.parse(await AsyncStorage.getItem("user"));
+      // console.log(loggedUser, "loggedUser");
 
-      const users = await axios.get(`${apis}/getUsers`)
-      setArray(users.data && users.data?.filter(user => user.username != loggedUser.username));
+      const following = loggedUser.following;
+      const followers = loggedUser.followers;
+      // console.log(followers, "following");
 
+      // let arr=[]
+      // for (const key in following) {
+      //   arr.push(key)
+      // }
+      const uniqueKeys = new Set([...Object.keys(following), ...Object.keys(followers)]);
+      const arr = Array.from(uniqueKeys);
+      setKey(arr)
+      console.log(arr, "arr");
+
+      const usersRef = ref(db, "users");
+      const dataSnapshot = await get(usersRef);
+
+      if (dataSnapshot.exists()) {
+        const userData = dataSnapshot.val();
+        const msgUsers =[];
+        for(const userId in userData){
+          if (userData.hasOwnProperty(userId)) {
+            // Check if the user ID is in the arr array
+            if (arr.includes(userId)) {
+              msgUsers.push(userData[userId]);
+            }
+          }
+        }
+        setArray(msgUsers);
+
+        // console.log(msgUsers, "msgUsers");
+        // console.log(Object.values(userData).filter(user => user.username != loggedUser.username), "userData");
+      }
+      else {
+        console.log("No data available");
+      }
     } catch (err) {
       setError(err);
     }
   };
-  // useEffect(() => {
-  //   getLang();
-  //   fetchArray();
-  // }, []);
-
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await getLang();
-        await fetchArray();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError(error);
-      }
-    };
-    fetchData();
+    getLang();
+    fetchArray();
   }, []);
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       await getLang();
+  //       await fetchArray();
+  //     } catch (error) {
+  //       console.error("Error fetching data:", error);
+  //       setError(error);
+  //     }
+  //   };
+  //   fetchData();
+  // }, []);
 
   if (error) {
     return (
@@ -81,19 +118,19 @@ export default function AllFriends({ navigation }) {
       </View>
     );
   }
-  if (!array) {
-    return (
-      <View
-        style={{
-          alignContent: "center",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  // if (!array) {
+  //   return (
+  //     <View
+  //       style={{
+  //         alignContent: "center",
+  //         alignItems: "center",
+  //         justifyContent: "center",
+  //       }}
+  //     >
+  //       <ActivityIndicator />
+  //     </View>
+  //   );
+  // }
   if (!userDataAgain) {
     return (
       <View
