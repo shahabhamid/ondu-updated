@@ -26,6 +26,8 @@ import { ScrollView } from "react-native";
 import { language } from "../constants/language";
 import CustomBubble from "../components/bubble-custom";
 import axios from "axios";
+import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { set, get, ref, push } from "firebase/database";
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
 
@@ -39,6 +41,7 @@ function CreateEventScreen({ navigation }) {
   const [desc, onChangeDesc] = React.useState("");
   const progress = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0)).current;
+  const db = FIREBASE_DATABASE;
   const month = [
     "Jan",
     "Feb",
@@ -74,7 +77,7 @@ function CreateEventScreen({ navigation }) {
   };
 
   const handleConfirm = (date) => {
-    setDate(date)
+    setDate(date);
     hideDatePicker();
   };
 
@@ -82,47 +85,102 @@ function CreateEventScreen({ navigation }) {
     setDatePickerVisibility(true);
   };
 
+  // const eventSet = async () => {
+  //   if (text === "" || date === "" || desc === "") {
+  //     alert("Please fill all the fields");
+  //   } else {
+  //     setIsLoad(true);
+  //     try {
+  //       const user = await AsyncStorage.getItem("user")
+  //       console.log(user, 'user')
+  //       const data = await axios.post(`${apis}/addEvent`, {
+  //         userId: JSON.parse(user)._id,
+  //         name: text,
+  //         date: date,
+  //         desc: desc,
+  //         isPrivate: isActive == 1 ? false : true,
+  //       })
+
+  //       socket.emit(
+  //         "eventName",
+  //         JSON.stringify({
+  //           userId: JSON.parse(user)._id,
+  //           name: text,
+  //           date: date,
+  //           desc: desc,
+  //           isPrivate: isActive == 1 ? false : true,
+  //         })
+  //       );
+  //       onChangeText("");
+  //       setIsLoad(false)
+  //       Alert.alert("Event Added Successfully");
+  //       navigation.navigate(
+  //         "SendEvents",
+  //         { data: JSON.parse(user).username },
+  //         { disabledAnimation: true }
+  //       );
+  //     } catch (error) {
+  //       setIsLoad(false)
+  //       Alert.alert("Wrong Password\n" + error.message);
+  //     }
+  //   }
+  // };
+
   const eventSet = async () => {
     if (text === "" || date === "" || desc === "") {
       alert("Please fill all the fields");
     } else {
       setIsLoad(true);
       try {
-        const user = await AsyncStorage.getItem("user")
-        console.log(user, 'user')
-        const data = await axios.post(`${apis}/addEvent`, {
-          userId: JSON.parse(user)._id,
+        const user = await AsyncStorage.getItem("user");
+        const userId = JSON.parse(user)._id;
+        const username = JSON.parse(user).username;
+        const name = JSON.parse(user).name;
+        const date1 = date.toISOString();
+        // console.log(date1, "date1");
+        // const timestamp = date.getTime();
+        // console.log(timestamp, "timestamp");
+        // console.log(date, "date")
+
+        // Add the event to your real-time database
+        const eventRef = ref(db, "events");
+        const newEventRef = push(eventRef);
+        const eventData = {
+          eventId: newEventRef.key,
+          userId: userId,
+          uname: name,
+          username: username,
           name: text,
-          date: date,
+          date: date.toString().substring(0, 15),
           desc: desc,
           isPrivate: isActive == 1 ? false : true,
-        })
+        };
+        await set(newEventRef, eventData);
 
-        socket.emit(
-          "eventName",
-          JSON.stringify({
-            userId: JSON.parse(user)._id,
-            name: text,
-            date: date,
-            desc: desc,
-            isPrivate: isActive == 1 ? false : true,
-          })
-        );
         onChangeText("");
-        setIsLoad(false)
+        setIsLoad(false);
         Alert.alert("Event Added Successfully");
         navigation.navigate(
           "SendEvents",
-          { data: JSON.parse(user).username },
+          // { data: JSON.parse(user).username },
+          { data:{
+            eventId: newEventRef.key,
+            userId: userId,
+            uname: name,
+            username: username,
+            name: text,
+            date: date.toString().substring(0, 15),
+            desc: desc,
+            isPrivate: isActive == 1 ? false : true,
+          } },
           { disabledAnimation: true }
         );
       } catch (error) {
-        setIsLoad(false)
-        Alert.alert("Wrong Password\n" + error.message);
+        setIsLoad(false);
+        Alert.alert("Error adding event\n" + error.message);
       }
     }
   };
-
 
   return (
     <CustomBubble
@@ -180,10 +238,7 @@ function CreateEventScreen({ navigation }) {
                 {selectLan == 0 ? language[22].eng : null}
               </Text>
 
-              <Pressable
-                onPress={showDatepicker}
-                title="Pick Date"
-              >
+              <Pressable onPress={showDatepicker} title="Pick Date">
                 <View style={{ flexDirection: "row" }}>
                   <View style={[styles.dateIn, { height: 18, width: 30 }]}>
                     <Text style={styles.fontDesign1}>
@@ -272,7 +327,6 @@ function CreateEventScreen({ navigation }) {
           </View>
         </ScrollView>
       </View>
-
     </CustomBubble>
   );
 }
@@ -299,8 +353,8 @@ const styles = StyleSheet.create({
   fontDesign1: {
     textAlign: "center",
     fontSize: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     fontFamily: "GothicA1-Regular",
     color: Colors.white,
   },
@@ -317,7 +371,7 @@ const styles = StyleSheet.create({
   dateIn: {
     margin: 5,
     alignItems: "center",
-    justifyContent: 'center',
+    justifyContent: "center",
     backgroundColor: Colors.pink,
     borderRadius: 24,
     borderColor: Colors.pink,

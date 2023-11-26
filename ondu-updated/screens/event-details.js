@@ -1,270 +1,374 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Switch,
-    Animated,
-    Button,
-    Dimensions,
-    FlatList,
-    Image,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    ActivityIndicator,
-    Alert,
+  Switch,
+  Animated,
+  Button,
+  Dimensions,
+  FlatList,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import Colors from "../constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-    widthPercentageToDP as wp,
-    heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
 
 const socket = io("http://192.168.100.7:3002");
 import apis from "../constants/static-ip";
 import CustomBubble from "../components/bubble-custom";
 import axios from "axios";
+import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { get, set, push, ref } from "firebase/database";
+import * as Notifications from "expo-notifications";
 
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
 function EventDetails({ navigation, route }) {
-    const { item } = route.params;
-    const [selectLan, setSelectLan] = useState(0);
-    const [user, setUser] = useState();
+  const { item } = route.params;
+  //   console.log(item, "item");
+  const [selectLan, setSelectLan] = useState(0);
+  const [user, setUser] = useState();
+  const [follow, setFollow] = useState(false);
+  const [unFollow, setUnFollow] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        getData();
-    }, []);
+  const db = FIREBASE_DATABASE;
 
-    const getData = async () => {
-        setSelectLan(parseInt(await AsyncStorage.getItem("LANG")) || 0);
-        setUser(JSON.parse(await AsyncStorage.getItem("user")));
+  //Notification
+  const [expoPushToken, setExpoPushToken] = useState("");
+  const [notification, setNotification] = useState(false);
+  const [token, setToken] = useState("");
+  const notificationListener = useRef();
+  const responseListener = useRef();
+
+  // useEffect(() => {
+  //     console.log(data.token, "data.token");
+  //     setExpoPushToken(data.token);
+  //     notificationListener.current =
+  //       Notifications.addNotificationReceivedListener((notification) => {
+  //         setNotification(notification);
+  //         console.log(notification, "notification");
+  //       });
+
+  //     responseListener.current =
+  //       Notifications.addNotificationResponseReceivedListener((response) => {
+  //         console.log(response, "response");
+  //       });
+
+  //     return () => {
+  //       Notifications.removeNotificationSubscription(
+  //         notificationListener.current
+  //       );
+  //       Notifications.removeNotificationSubscription(responseListener.current);
+  //     };
+  //   }, []);
+
+  async function sendPushNotification(recipientExpoPushToken, message) {
+    const loggeduser = await AsyncStorage.getItem("user");
+    const username = JSON.parse(loggeduser).username;
+    const expoPushEndpoint = "https://exp.host/--/api/v2/push/send";
+    try {
+      const response = await axios.post(expoPushEndpoint, {
+        to: recipientExpoPushToken,
+        title: username,
+        body: message,
+      });
+
+      console.log("Notification sent successfully:", response.data);
+    } catch (error) {
+      console.error("Error sending notification:", error.message);
+    }
+  }
+
+  useEffect(() => {
+    fetchData();
+    getTokens();
+  }, []);
+
+  const getTokens = async () => {
+    const userId = item.userId;
+    console.log(userId, "userId");
+    const userRef = ref(db, `users/${userId}`);
+    const snapshot = await get(userRef);
+    const data = snapshot.val();
+    setToken(data.token);
+    // console.log(data.token, data.username);
+  };
+
+  const fetchData = async () => {
+    try {
+      await Promise.all([getData(), getFollowers(), getUnFollowers()]);
+      setLoading(false);
+    } catch (error) {
+      console.error("An error occurred during data fetching:", error);
+    }
+  };
+
+  const getFollowers = async () => {
+    const loggeduser = await AsyncStorage.getItem("user");
+    const loggeduserobj = JSON.parse(loggeduser).username;
+    const eventRef = ref(db, `events/${item.eventId}/followers`);
+    const snapshot = await get(eventRef);
+    const data = snapshot.val();
+    let isFollowing = false;
+
+    if (data) {
+      Object.values(data).forEach((follower) => {
+        if (follower.username === loggeduserobj) {
+          isFollowing = true;
+        }
+      });
+      setFollow(isFollowing);
+    }
+  };
+
+  const getUnFollowers = async () => {
+    const loggeduser = await AsyncStorage.getItem("user");
+    const loggeduserobj = JSON.parse(loggeduser).username;
+    const eventRef = ref(db, `events/${item.eventId}/Unfollow`);
+    const snapshot = await get(eventRef);
+    const data = snapshot.val();
+    let isFollowing = false;
+    if (data) {
+      Object.values(data).forEach((follower) => {
+        if (follower.username === loggeduserobj) {
+          isFollowing = true;
+        }
+      });
+      setUnFollow(isFollowing);
+    }
+  };
+
+  const getData = async () => {
+    setSelectLan(parseInt(await AsyncStorage.getItem("LANG")) || 0);
+    setUser(JSON.parse(await AsyncStorage.getItem("user")));
+  };
+
+  const FollowThisUser = async () => {
+    const loggeduser = await AsyncStorage.getItem("user");
+
+    const eventId = item.eventId;
+    const followRef = ref(db, `events/${eventId}/followers`);
+    const newRef = push(followRef);
+    const data = {
+      username: JSON.parse(loggeduser).username,
     };
+    set(newRef, data);
 
-    const FollowThisUser = async () => {
+    const recipientExpoPushToken = token;
+    console.log(recipientExpoPushToken, "recipientExpoPushToken");
+    const currentmessage =
+      "Accepted your event named " + item.name + " on " + item.date;
+    await sendPushNotification(recipientExpoPushToken, currentmessage);
 
-        fetch(apis + "accetpEvent", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                acceptfrom: loggeduserobj.username,
-                acceptto: item.username,
-            }),
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.message == "Event Accepted") {
-                    console.log(data);
-                    alert("Event Accepted");
-                    fetch(apis + "send-notification", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            targetUser: set.deviceToken,
-                            message: item.fname + " Accepted your Event",
-                            title: "Events",
-                        }),
-                    }).then((res) => res.json());
-                    getEvent();
-                    setIsfollowing(true);
-                } else {
-                    alert("Something Went Wrong");
-                    console.log(data);
-                }
-            });
+    getFollowers();
+  };
+
+  const UnfollowThisUser = async () => {
+    const loggeduser = await AsyncStorage.getItem("user");
+
+    const eventId = item.eventId;
+    const followRef = ref(db, `events/${eventId}/Unfollow`);
+    const newRef = push(followRef);
+    const data = {
+      username: JSON.parse(loggeduser).username,
     };
+    set(newRef, data);
 
-    const [isfollowing, setIsfollowing] = React.useState(false);
-    const CheckFollow = async () => {
-        AsyncStorage.getItem("user").then((loggeduser) => {
-            const loggeduserobj = JSON.parse(loggeduser);
-            fetch(apis + "checkevent", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    acceptfrom: loggeduserobj.username,
-                    acceptto: item.username,
-                }),
-            })
-                .then((res) => res.json())
-                .then((data) => {
-                    if (data.message == "Event in following list") {
-                        setIsfollowing(true);
-                    } else if (data.message == "Event not in following list") {
-                        setIsfollowing(false);
-                    } else {
-                        // getEvent()
-                        alert("Something Went Wrong");
-                    }
-                });
-        });
-    };
+    const recipientExpoPushToken = token;
+    console.log(recipientExpoPushToken, "recipientExpoPushToken");
+    const currentmessage =
+      "Rejected your event named " + item.name + " on " + item.date;
+    await sendPushNotification(recipientExpoPushToken, currentmessage);
 
-    const UnfollowThisUser = async () => {
-        console.log("UnfollowThisUser");
-        const loggeduser = await AsyncStorage.getItem("user");
-        const loggeduserobj = JSON.parse(loggeduser);
-        fetch(apis + "unfollowevent", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                acceptfrom: loggeduserobj.username,
-                acceptto: item.username,
-            }),
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.message == "Event unaccepted") {
-                    alert("Event unaccepted");
-                    fetch(apis + "send-notification", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            targetUser: set.deviceToken,
-                            message: item.fname + " UnAccepted your Event",
-                            title: "Events",
-                        }),
-                    }).then((res) => res.json());
-                    getEvent();
-                    setIsfollowing(false);
-                } else {
-                    alert("Something Went Wrong");
-                }
-            });
-    };
-    return (
-        <CustomBubble
-            bubbleColor={Colors.dark}
-            crossColor={Colors.brown}
-            navigation={navigation}
-        >
+    getUnFollowers();
+  };
+  return (
+    <CustomBubble
+      bubbleColor={Colors.dark}
+      crossColor={Colors.brown}
+      navigation={navigation}
+    >
+      {loading && <ActivityIndicator size="large" color={Colors.white} />}
+      {!loading && (
+        <>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingTop: 25,
+              height: hp("20%"),
+            }}
+          >
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              {user.profile_pic_name === "" ? (
+                <Ionicons name="person-circle" size={60} color={Colors.white} />
+              ) : (
+                <Image
+                  style={{
+                    height: 50,
+                    width: 50,
+                    marginRight: 8,
+                    borderRadius: 360,
+                  }}
+                  source={{ uri: item.pic }}
+                />
+              )}
+            </View>
             <View
-                style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingTop: 25,
-                    height: hp("20%"),
-                }}
+              style={{
+                flex: 1,
+                alignItems: "flex-start",
+                //justifyContent: "center",
+                paddingRight: hp("7%"),
+              }}
             >
-                <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    {item.pic === "" ? (
-                        <Ionicons name="person-circle" size={60} color={Colors.white} />
-                    ) : (
-                        <Image
-                            style={{
-                                height: 50,
-                                width: 50,
-                                marginRight: 8,
-                                borderRadius: 360,
-                            }}
-                            source={{ uri: item.pic }}
-                        />
-                    )}
-                </View>
-                <View
-                    style={{
-                        flex: 1,
-                        alignItems: "flex-start",
-                        //justifyContent: "center",
-                        paddingRight: hp("7%"),
-                    }}
-                >
-                    <Text style={{ color: Colors.brown, fontSize: 20 }}>
-                        {item.user.name}
-                    </Text>
-                    <Text style={{ color: Colors.brown, fontSize: 20 }}>
-                        {"@" + item.user.username}
-                    </Text>
-                </View>
+              <Text style={{ color: Colors.brown, fontSize: 20 }}>
+                {item.uname}
+              </Text>
+              <Text style={{ color: Colors.brown, fontSize: 20 }}>
+                {"@" + item.username}
+              </Text>
             </View>
-            <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ color: Colors.white, fontSize: 20, paddingBottom: 10 }}>
-                    {item.name}
+          </View>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text
+              style={{ color: Colors.white, fontSize: 20, paddingBottom: 10 }}
+            >
+              {item.name}
+            </Text>
+            <Text style={{ color: Colors.pink, fontSize: 20 }}>
+              {item.date}
+            </Text>
+            <Text
+              style={{
+                padding: 8,
+                color: Colors.white,
+                fontSize: 16,
+                justifyContent: "center",
+              }}
+            >
+              {item.desc}
+            </Text>
+
+            {follow && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: Colors.pink, fontSize: 20 }}>
+                  You followed this event
                 </Text>
-                <Text style={{ color: Colors.pink, fontSize: 20 }}>{item.date}</Text>
-                <Text
-                    style={{
-                        padding: 8,
-                        color: Colors.white,
-                        fontSize: 16,
-                        justifyContent: "center",
-                    }}
-                >
-                    {item.desc}
+              </View>
+            )}
+
+            {unFollow && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: Colors.pink, fontSize: 20 }}>
+                  You unfollowed this event
                 </Text>
-                <View
-                    style={{
-                        flexDirection: "row",
-                        flex: 1,
+              </View>
+            )}
+
+            {!follow && !unFollow && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {user?.username == item.username ? (
+                  <View>
+                    <Text style={{ color: Colors.white, fontSize: 20 }}>
+                      You created this event
+                    </Text>
+                  </View>
+                ) : (
+                  <Pressable>
+                    <View
+                      style={{
                         alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    {user?.username == item.user.username ? (
-                        <View></View>
-                    ) : (
-                        <Pressable>
-                            <View
-                                style={{
-                                    alignItems: "center",
-                                    backgroundColor: Colors.brown,
-                                    height: 30,
-                                    width: 60,
-                                    borderRadius: 20,
-                                }}
-                            >
-                                <Ionicons
-                                    name={"ios-checkmark"}
-                                    size={22}
-                                    color={Colors.white}
-                                    onPress={() => FollowThisUser()}
-                                />
-                            </View>
-                        </Pressable>
-                    )}
-                    <View style={{ width: 10 }}></View>
-                    {user?.username === item.user.username ? (
-                        <View></View>
-                    ) : (
-                        <Pressable>
-                            <View
-                                style={{
-                                    alignItems: "center",
-                                    backgroundColor: Colors.pink,
-                                    height: 30,
-                                    width: 60,
-                                    borderRadius: 20,
-                                }}
-                            >
-                                <Ionicons
-                                    name={"ios-close-outline"}
-                                    size={22}
-                                    color={Colors.white}
-                                    onPress={() => UnfollowThisUser()}
-                                />
-                            </View>
-                        </Pressable>
-                    )}
-                </View>
-            </View>
-        </CustomBubble>
-    )
+                        backgroundColor: Colors.brown,
+                        height: 30,
+                        width: 60,
+                        borderRadius: 20,
+                      }}
+                    >
+                      <Ionicons
+                        name={"ios-checkmark"}
+                        size={22}
+                        color={Colors.white}
+                        onPress={() => FollowThisUser()}
+                      />
+                    </View>
+                  </Pressable>
+                )}
+                <View style={{ width: 10 }}></View>
+                {user?.username === item.username ? (
+                  <View></View>
+                ) : (
+                  <Pressable>
+                    <View
+                      style={{
+                        alignItems: "center",
+                        backgroundColor: Colors.pink,
+                        height: 30,
+                        width: 60,
+                        borderRadius: 20,
+                      }}
+                    >
+                      <Ionicons
+                        name={"ios-close-outline"}
+                        size={22}
+                        color={Colors.white}
+                        onPress={() => UnfollowThisUser()}
+                      />
+                    </View>
+                  </Pressable>
+                )}
+
+                {/* {follow && <Text>You followed this event</Text>} */}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+    </CustomBubble>
+  );
 }
 export default EventDetails;
 

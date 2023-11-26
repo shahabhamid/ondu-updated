@@ -62,14 +62,14 @@ export default function AllFriends({ navigation }) {
         for(const userId in userData){
           if (userData.hasOwnProperty(userId)) {
             // Check if the user ID is in the arr array
+            // console.log(userData.hasOwnProperty(userId), "arr.includes(userId)");
             if (arr.includes(userId)) {
               msgUsers.push(userData[userId]);
             }
           }
         }
         setArray(msgUsers);
-
-        // console.log(msgUsers, "msgUsers");
+        console.log(msgUsers, "msgUsers");
         // console.log(Object.values(userData).filter(user => user.username != loggedUser.username), "userData");
       }
       else {

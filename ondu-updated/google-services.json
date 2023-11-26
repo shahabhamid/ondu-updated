@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "643836859984",
+    "firebase_url": "https://ondu-a5554-default-rtdb.firebaseio.com",
+    "project_id": "ondu-a5554",
+    "storage_bucket": "ondu-a5554.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:643836859984:android:06392a9828075cc5b62355",
+        "android_client_info": {
+          "package_name": "com.ondu.onduupdated"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAARrRj1FuqN26AxvoYH3a7310Zr1XTaX8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

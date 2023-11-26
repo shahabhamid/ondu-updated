@@ -2,40 +2,67 @@ import {
   StyleSheet,
   Text,
   View,
-  StatusBar,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   Dimensions,
-  Button,
   Image,
   FlatList,
-  TouchableOpacity,
-  ImageBackground,
   Pressable,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React, { useEffect, useState } from "react";
-import io from "socket.io-client";
+import React, { useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const socket = io("http://192.168.100.7:3002");
 import Colors from "../constants/colors";
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
-import apis from "../constants/static-ip";
 import CustomBubble from "../components/bubble-custom";
+import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { get, ref, set } from "firebase/database";
+import * as Notifications from "expo-notifications";
+import axios from "axios";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function SendEvents({ navigation, route }) {
   const [error, setError] = useState(null);
   const [userdataagain, setUserdataagain] = React.useState([]);
   const { data } = route.params;
+  // console.log(data, "data");
   const [selectLan, setSelectLan] = useState(0);
+  const [key, setKey] = useState([]);
   const [selected, setSelected] = useState([]);
-  // const handleSend = () => {
-  //   socket.on("send-data", selected);
-  //   console.log(selected);
-  // };
+  // const [array, setArray] = useState(null);
+  const db = FIREBASE_DATABASE;
+
+  //Notification
+  const [expoPushToken, setExpoPushToken] = useState("");
+  const [notification, setNotification] = useState(false);
+  const [token, setToken] = useState("");
+  const notificationListener = useRef();
+  const responseListener = useRef();
+
+  async function sendPushNotification(recipientExpoPushToken, message) {
+    const loggeduser = await AsyncStorage.getItem("user");
+    const username = JSON.parse(loggeduser).username;
+    const expoPushEndpoint = "https://exp.host/--/api/v2/push/send";
+    try {
+      const response = await axios.post(expoPushEndpoint, {
+        to: recipientExpoPushToken,
+        title: username,
+        body: message,
+      });
+
+      console.log("Notification sent successfully:", response.data);
+    } catch (error) {
+      console.error("Error sending notification:", error.message);
+    }
+  }
+  
   const handleSelect = (item) => {
     if (selected.includes(item)) {
       setSelected(selected.filter((i) => i !== item));
@@ -43,6 +70,7 @@ export default function SendEvents({ navigation, route }) {
       setSelected([...selected, item]);
     }
   };
+
 
   const getLang = async () => {
     setSelectLan(parseInt(await AsyncStorage.getItem("LANG")) || 0);
@@ -63,120 +91,78 @@ export default function SendEvents({ navigation, route }) {
       is24Hour: true,
     });
   };
-
-  useEffect(() => {
-    // const socket = io("http://192.168.100.7:3002");
-  }, []);
   const [array, setArray] = useState(null);
   const fetchArray = async () => {
     try {
-      await AsyncStorage.getItem("user")
-        .then(async (value) => {
-          fetch(apis + `/${JSON.parse(value).username}`)
-            .then((res) => res.json())
-            .then((dat) => {
-              setArray(dat);
-              console.log("data", dat);
-            });
-        })
-        .catch((err) => {
-          setError(err);
-        });
+      const user = await AsyncStorage.getItem("user");
+      const userId = JSON.parse(user)._id;
+      // console.log(userId, "user");
+      const userRef = ref(db, `users/${userId}`);
+
+      get(userRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          // console.log(snapshot.val());
+          setArray(snapshot.val());
+          // console.log(array, "array");
+        } else {
+          console.log("No data available");
+        }
+      });
     } catch (err) {
       setError(err);
       console.log(err);
     }
   };
   const handleSend = async () => {
-    console.log("sss", selected);
-    const response = await fetch(apis + "send-data", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        selected: selected,
-        mess: data,
-      }),
-    });
-    if (response.ok) {
-      const dat = await response.json();
-      console.log(dat);
-      navigation.navigate("HomePage");
+    const message = "Invited you to " + data.name + " event on " + data.date;
+    try {
+    for (const user of userdataagain) {
+      if (user.token) {
+        await sendPushNotification(user.token, message);
+      }
     }
+    console.log("Push notifications sent to all users.");
 
-    // console.log(response.data);
-  };
+    } catch (error) {
+      console.error("Error sending push notifications:", error.message);
+    }
+   };
   useEffect(() => {
-    console.log(data);
     getLang();
-
     fetchArray();
-  }, []);
-  useEffect(() => {
-    if (array) {
-      let allData = array.following.concat(array.followers);
-
-      let uniqueData = allData.filter(
-        (value, index, self) => self.indexOf(value) === index
-      );
-
-      console.log(uniqueData);
-
-      uniqueData.forEach((item) => {
-        console.log(item);
-        const fetchData2 = async () => {
-          try {
-            const res = await fetch(apis + `otheruserdata`, {
-              method: "POST",
-
-              body: JSON.stringify({ email: item }),
-
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
-            const data = await res.json();
-            console.log(data);
-
-            setUserdataagain((prevData2) => [...prevData2, data]);
-          } catch (err) {
-            console.error(err);
-            setError(err);
-          }
-        };
-        fetchData2();
-      });
-    }
+    fetchData();
   }, [array]);
-  // useEffect(() => {
-  //   if (array) {
-  //     array.followers.forEach((item) => {
-  //       console.log(item);
-  //       const fetchData2 = async () => {
-  //         try {
-  //           const res = await fetch(apis + `otheruserdata`, {
-  //             method: "POST",
 
-  //             body: JSON.stringify({ email: item }),
+  const fetchData = async () => {
+    try {
+      if (array) {
+        const followers = array.followers;
+        const following = array.following;
 
-  //             headers: {
-  //               "Content-Type": "application/json",
-  //             },
-  //           });
-  //           const data = await res.json();
-  //           console.log(data);
+        const uniqueKeys = new Set([
+          ...Object.keys(following),
+          ...Object.keys(followers),
+        ]);
+        const arr = Array.from(uniqueKeys);
+        // console.log(arr, "arr");
 
-  //           setUserdataagain((prevData2) => [...prevData2, data]);
-  //         } catch (err) {
-  //           console.error(err);
-  //           setError(err);
-  //         }
-  //       };
-  //       fetchData2();
-  //     });
-  //   }
-  // }, [array]);
+        const usersRef = ref(db, "users");
+        const dataSnapshot = await get(usersRef);
+
+        if (dataSnapshot.exists()) {
+          const userData = dataSnapshot.val();
+          const userList = arr.map((userId) => userData[userId]);
+          setUserdataagain(userList);
+          // console.log(userdataagain, "msgUsers")
+        } else {
+          console.log("No data available");
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      setError(error);
+    }
+  };
 
   if (error) {
     return (
@@ -229,7 +215,7 @@ export default function SendEvents({ navigation, route }) {
   function Item({ item, index }) {
     const backg = selected.includes(item) ? Colors.dark : Colors.brown;
 
-    console.log(item);
+    // console.log(item);
     return (
       <View style={[{ marginTop: 10 }, { marginHorizontal: 30 }]}>
         <Pressable
@@ -242,7 +228,7 @@ export default function SendEvents({ navigation, route }) {
           <View
             style={{ flex: 1, flexDirection: "row", alignItems: "flex-start" }}
           >
-            {item.user.profile_pic_name != "" ? (
+            {item.profile_pic_name != "" ? (
               <Image
                 style={{
                   margin: 10,
@@ -250,7 +236,7 @@ export default function SendEvents({ navigation, route }) {
                   width: 50,
                   borderRadius: 360,
                 }}
-                source={{ uri: item.user.profile_pic_name }}
+                source={{ uri: item.profile_pic_name }}
               />
             ) : (
               <Ionicons
@@ -275,7 +261,7 @@ export default function SendEvents({ navigation, route }) {
                   fontFamily: "GothicA1-Regular",
                 }}
               >
-                {item.user.name}
+                {item.name}
               </Text>
               <Text
                 style={{
@@ -285,7 +271,7 @@ export default function SendEvents({ navigation, route }) {
                   fontFamily: "GothicA1-Regular",
                 }}
               >
-                {item.user.userName}
+                {item.username}
               </Text>
             </View>
           </View>
@@ -293,6 +279,7 @@ export default function SendEvents({ navigation, route }) {
       </View>
     );
   }
+
   return (
     <CustomBubble
       bubbleColor={Colors.brown}
@@ -303,7 +290,6 @@ export default function SendEvents({ navigation, route }) {
         <Text
           style={[
             {
-              // marginLeft: 44,
               marginTop: 38,
               fontSize: 28,
               color: Colors.white,
@@ -324,6 +310,7 @@ export default function SendEvents({ navigation, route }) {
           }}
           extraData={selected}
         />
+
         <Pressable
           style={[styles.dateIn, { height: 25, width: 50, marginTop: 8 }]}
           onPress={() => {

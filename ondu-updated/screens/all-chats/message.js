@@ -9,40 +9,124 @@ import {
   Image,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+// import * as ImagePicker from "expo-image-picker";
 import * as ImagePicker from "expo-image-picker";
-
-const socket = io("http://192.168.0.105:3001");
+import * as FileSystem from "expo-file-system";
 import Colors from "../../constants/colors";
 import apis from "../../constants/static-ip";
 import CustomBubble from "../../components/bubble-custom";
 import { FIREBASE_DATABASE } from "../../Firebase/firebaseConfig";
-import { get, ref, set, query, orderByChild, equalTo, onValue } from "firebase/database";
+import { FIREBASE_MESSAGING } from "../../Firebase/firebaseConfig";
+import { FIREBASE_STORAGE } from "../../Firebase/firebaseConfig";
+// import ImagePicker from 'react-native-image-picker';
+
+import {
+  get,
+  ref,
+  set,
+  query,
+  orderByChild,
+  equalTo,
+  onValue,
+} from "firebase/database";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+import axios from "axios";
+import {
+  ref as sRef,
+  uploadString,
+  getStorage,
+  putString,
+  getDownloadURL,
+  put,
+  uploadBlob,
+} from "firebase/storage";
+
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function Message({ navigation, route }) {
   const scrollViewRef = useRef(null);
   const db = FIREBASE_DATABASE;
+  const storage = FIREBASE_STORAGE;
+  // const storage = FIREBASE_STORAGE;
+  const messaging = FIREBASE_MESSAGING;
+  // const axios = require("axios");
 
   const handleNewMessage = () => {
     scrollViewRef.current.scrollToEnd({ animated: true });
   };
   const { data } = route.params;
-  // console.log("data", data._id);
+  // console.log("data", data);
   const [error, setError] = useState(null);
 
   const [ourUserData, setOurUserData] = useState([]);
   const [fuserdata, setFuserData] = useState([]);
 
   const [userid, setUserid] = useState(null);
+  const [userUsername, setUserUsername] = useState(null);
   const [roomId, setRoomid] = useState(null);
   const [chat, setChat] = useState(null);
   const [image, setImage] = useState(null);
   const [currentmessage, setCurrentmessage] = useState("");
+
+  //Notification
+  const [expoPushToken, setExpoPushToken] = useState("");
+  const [notification, setNotification] = useState(false);
+  const notificationListener = useRef();
+  const responseListener = useRef();
+
+  // {console.log(expoPushToken, "Token")}
+
+  useEffect(() => {
+    console.log(data.token, "data.token");
+    setExpoPushToken(data.token);
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        setNotification(notification);
+        console.log(notification, "notification");
+      });
+
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log(response, "response");
+      });
+
+    return () => {
+      Notifications.removeNotificationSubscription(
+        notificationListener.current
+      );
+      Notifications.removeNotificationSubscription(responseListener.current);
+    };
+  }, []);
+
+
+  async function sendPushNotification(recipientExpoPushToken, message) {
+    // Send a push notification to the recipient using their Expo Push Token
+    const expoPushEndpoint = "https://exp.host/--/api/v2/push/send";
+    try {
+      const response = await axios.post(expoPushEndpoint, {
+        to: recipientExpoPushToken,
+        title: userUsername,
+        body: message,
+      });
+
+      console.log("Notification sent successfully:", response.data);
+    } catch (error) {
+      console.error("Error sending notification:", error.message);
+    }
+  }
 
   const loadmessage = async () => {
     try {
@@ -52,11 +136,11 @@ export default function Message({ navigation, route }) {
         orderByChild("roomid"),
         equalTo(roomId)
       );
-  
-      console.log(roomId, "roomid")
+
+      // console.log(roomId, "roomid");
       onValue(roomMessagesQuery, (snapshot) => {
         const messages = snapshot.val();
-        if (messages){
+        if (messages) {
           const roomMessagesArray = Object.values(messages);
           const sortedMessages = roomMessagesArray.sort((a, b) => {
             return a.createdAt - b.createdAt;
@@ -70,19 +154,19 @@ export default function Message({ navigation, route }) {
 
         // if (snapshot.exists()) {
         //   const roomMessagesArray = Object.values(snapshot.val());
-          
+
         //   // Order messages by timestamp
         //   const sortedMessages = roomMessagesArray.sort((a, b) => {
         //     return a.createdAt - b.createdAt;
         //   });
-    
+
         //   setChat(sortedMessages);
         //   if (sortedMessages.length > 0) {
         //     handleNewMessage();
         //   }
 
         //   // handleNewMessage();
-        // } 
+        // }
         else {
           console.log("No messages with roomid found");
         }
@@ -91,12 +175,14 @@ export default function Message({ navigation, route }) {
       console.error("Error in loadmessage:", error);
     }
   };
-  
+
   const userRoom = async () => {
     try {
       const loggedUser = JSON.parse(await AsyncStorage.getItem("user"));
       const loggedUserid = loggedUser._id;
       setUserid(loggedUserid);
+      setUserUsername(loggedUser.username);
+      // setExpoPushToken(data.token);
       const msgUser = data._id;
 
       let roomid = "";
@@ -123,6 +209,9 @@ export default function Message({ navigation, route }) {
         mimeType,
         fileName = "";
       if (image) {
+        const fileName = Date.now().toFixed(10) + "image.png";
+        const imageURL = await uploadImageToStorage(image, fileName);
+        setCurrentmessage(imageURL);
         type = "image";
         mimeType = "image/png";
         fileName = Date.now().toFixed(10) + "image.png";
@@ -149,6 +238,11 @@ export default function Message({ navigation, route }) {
       const msgRef = ref(db, `messages/${ObjectId}`);
       await set(msgRef, message);
       loadmessage();
+
+      const recipientExpoPushToken = data.token;
+      // console.log(currentmessage, "recipientExpoPushToken");
+      await sendPushNotification(recipientExpoPushToken, currentmessage);
+      // await schedulePushNotification();
       setCurrentmessage("");
       setImage("");
     } catch (error) {
@@ -156,7 +250,6 @@ export default function Message({ navigation, route }) {
     }
   };
 
-  // OUR ID & ROOM ID FOR SOCKET.IO
   const handleImageUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -168,11 +261,15 @@ export default function Message({ navigation, route }) {
       const response = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
+        // aspect: [4, 3],
+        // quality: 1,
       });
+      // console.log(response, "response");
 
       if (!response.canceled) {
+        // console.log(response, "response");
         //  setProfileImage(response.assets[0]);
-        // console.log(response.assets[0].uri);
+        // console.log(response);
         setCurrentmessage(response.assets[0].uri);
         setImage(response.assets[0].uri);
         //socket.emit("send_message", currentmessage);
@@ -180,8 +277,11 @@ export default function Message({ navigation, route }) {
     }
   };
 
+
   useEffect(() => {
     // loaddata();
+    // getToken();
+    // getFCMToken();
     userRoom();
   }, []);
   const [scrollEnd, setScrollEnd] = useState(true);
@@ -266,40 +366,14 @@ export default function Message({ navigation, route }) {
             onMomentumScrollEnd={handleScroll}
             style={styles.messageView}
           >
-            {chat != null && chat.map((item, index) => {
-              return (
-                <View style={styles.message} key={index}>
-                  {/* {console.log("item", userid )} */}
-                  {item.senderid == userid && item.type === "text" && (
-                    <View style={styles.messageLeft}>
-                      {ourUserData.profile_pic_name === "" ? (
-                        <Ionicons
-                          style={{
-                            marginVertical: 10,
-                          }}
-                          name="person-circle-outline"
-                          color={Colors.white}
-                          size={25}
-                        />
-                      ) : (
-                        <Image
-                          style={{
-                            marginTop: 10,
-                            width: 25,
-                            height: 25,
-                            borderRadius: 360,
-                          }}
-                          source={{ uri: ourUserData.profile_pic_name }}
-                        />
-                      )}
-                      <Text style={styles.messageTextLeft}>{item.message}</Text>
-                    </View>
-                  )}
-                  {item.senderid != userid &&
-                    item.type === "text" &&
-                    item != "" && (
-                      <View style={styles.messageRight}>
-                        {fuserdata.profile_pic_name === "" ? (
+            {chat != null &&
+              chat.map((item, index) => {
+                return (
+                  <View style={styles.message} key={index}>
+                    {/* {console.log("item", userid )} */}
+                    {item.senderid == userid && item.type === "text" && (
+                      <View style={styles.messageLeft}>
+                        {ourUserData.profile_pic_name === "" ? (
                           <Ionicons
                             style={{
                               marginVertical: 10,
@@ -316,54 +390,48 @@ export default function Message({ navigation, route }) {
                               height: 25,
                               borderRadius: 360,
                             }}
-                            source={{ uri: fuserdata.profile_pic_name }}
+                            source={{ uri: ourUserData.profile_pic_name }}
                           />
                         )}
-                        <Text style={styles.messageTextRight}>
+                        <Text style={styles.messageTextLeft}>
                           {item.message}
                         </Text>
                       </View>
                     )}
-
-                  {item.senderid == userid && item.type === "image" && (
-                    <View style={styles.messageLeft}>
-                      {ourUserData.profile_pic_name === "" ? (
-                        <Ionicons
-                          style={{
-                            marginVertical: 10,
-                          }}
-                          name="person-circle-outline"
-                          color={Colors.white}
-                          size={25}
-                        />
-                      ) : (
-                        <Image
-                          style={{
-                            marginTop: 10,
-                            width: 25,
-                            height: 25,
-                            borderRadius: 360,
-                          }}
-                          source={{ uri: ourUserData.profile_pic_name }}
-                        />
+                    {item.senderid != userid &&
+                      item.type === "text" &&
+                      item != "" && (
+                        <View style={styles.messageRight}>
+                          {/* {console.log(fuserdata.profile_pic_name, "fuserdata")} */}
+                          {fuserdata.profile_pic_name === "" ? (
+                            <Ionicons
+                              style={{
+                                marginVertical: 10,
+                              }}
+                              name="person-circle-outline"
+                              color={Colors.white}
+                              size={25}
+                            />
+                          ) : (
+                            <Image
+                              style={{
+                                marginTop: 10,
+                                width: 25,
+                                height: 25,
+                                borderRadius: 360,
+                              }}
+                              source={{ uri: fuserdata.profile_pic_name }}
+                            />
+                          )}
+                          <Text style={styles.messageTextRight}>
+                            {item.message}
+                          </Text>
+                        </View>
                       )}
-                      <Image
-                        style={{
-                          width: 100,
-                          height: 100,
-                          borderRadius: 18,
-                          marginRight: 10,
-                          marginBottom: 12,
-                        }}
-                        source={{ uri: item.message }}
-                      />
-                    </View>
-                  )}
-                  {item.senderid != userid &&
-                    item.type === "image" &&
-                    item != "" && (
-                      <View style={styles.messageRight}>
-                        {fuserdata.profile_pic_name === "" ? (
+
+                    {item.senderid == userid && item.type === "image" && (
+                      <View style={styles.messageLeft}>
+                        {ourUserData.profile_pic_name === "" ? (
                           <Ionicons
                             style={{
                               marginVertical: 10,
@@ -380,7 +448,7 @@ export default function Message({ navigation, route }) {
                               height: 25,
                               borderRadius: 360,
                             }}
-                            source={{ uri: fuserdata.profile_pic_name }}
+                            source={{ uri: ourUserData.profile_pic_name }}
                           />
                         )}
                         <Image
@@ -388,16 +456,52 @@ export default function Message({ navigation, route }) {
                             width: 100,
                             height: 100,
                             borderRadius: 18,
-                            marginLeft: 10,
+                            marginRight: 10,
                             marginBottom: 12,
                           }}
                           source={{ uri: item.message }}
                         />
                       </View>
                     )}
-                </View>
-              );
-            })}
+                    {item.senderid != userid &&
+                      item.type === "image" &&
+                      item != "" && (
+                        <View style={styles.messageRight}>
+                          {fuserdata.profile_pic_name === "" ? (
+                            <Ionicons
+                              style={{
+                                marginVertical: 10,
+                              }}
+                              name="person-circle-outline"
+                              color={Colors.white}
+                              size={25}
+                            />
+                          ) : (
+                            <Image
+                              style={{
+                                marginTop: 10,
+                                width: 25,
+                                height: 25,
+                                borderRadius: 360,
+                              }}
+                              source={{ uri: fuserdata.profile_pic_name }}
+                            />
+                          )}
+                          <Image
+                            style={{
+                              width: 100,
+                              height: 100,
+                              borderRadius: 18,
+                              marginLeft: 10,
+                              marginBottom: 12,
+                            }}
+                            source={{ uri: item.message }}
+                          />
+                        </View>
+                      )}
+                  </View>
+                );
+              })}
           </ScrollView>
           <View
             style={{
@@ -406,6 +510,7 @@ export default function Message({ navigation, route }) {
           >
             <Ionicons
               onPress={handleImageUpload}
+              // onPress={pickImage}
               name="add-circle"
               color={Colors.brown}
               size={22}
@@ -422,8 +527,13 @@ export default function Message({ navigation, route }) {
                 name="send"
                 color={Colors.pink}
                 size={22}
-                onPress={() => {
+                // onPress={() => {
+                //   sendMessage();
+                // }}
+                onPress={async () => {
+                  // await schedulePushNotification();
                   sendMessage();
+                  // uploadImageToFirebase();
                 }}
               />
             ) : (

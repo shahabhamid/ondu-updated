@@ -18,6 +18,7 @@ import { Image } from "react-native";
 import Toast from 'react-native-root-toast'
 import { FIRBASE_AUTH } from "../Firebase/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
+// import { AUTH } from "../Firebase/firebaseConfig";
 
 const { width, height } = Dimensions.get("window");
 const size = Math.min(width, height) - 1;
@@ -28,6 +29,9 @@ export default function LoginScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = React.useState(null);
   const passRef = React.useRef();
   const auth = FIRBASE_AUTH;
+
+  // const credential = AUTH;
+  // console.log(credential, 'credential')
 
   const loginUser = async () =>{
     if (email == "" || password == "") {

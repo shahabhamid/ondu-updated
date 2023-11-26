@@ -12,6 +12,7 @@ import Settings from './screens/settings';
 import LanSelector from './screens/settings-pages/lan-selector';
 import YourAccount from './screens/settings-pages/your-account';
 import CreateEventScreen from './screens/create-event-screen';
+import ProfileScreen from './screens/profile-pages/profile-screen';
 import SendEvents from './screens/send-events';
 import Events from './screens/events';
 import EventDetails from './screens/event-details';
@@ -19,10 +20,22 @@ import SearchUserPage from './screens/search';
 import OtherUser from './screens/profile-pages/other-user';
 import AllFriends from './screens/all-chats/all-friends';
 import Message from './screens/all-chats/message';
-
+// import { AUTH } from './Firebase/firebaseConfig';
+import {FIREBASE_AUTH} from './Firebase/firebaseConfig';  
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  // const auth = FIREBASE_AUTH;
+  // useEffect(() => {
+  //   // Subscribe to Firebase Auth state changes
+  //   const unsubscribe = AUTH.onAuthStateChanged((user) => {
+  //     setUser(user);
+  //   });
+
+    // Clean up the subscription when the component unmounts
+  //   return () => unsubscribe();
+  // }, []);
   // const [user, setUser] =useState(null)
 
   // useEffect(() => {
@@ -91,6 +104,11 @@ export default function App() {
           <Stack.Screen
             name="Settings"
             component={Settings}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ProfileScreen"
+            component={ProfileScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

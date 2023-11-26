@@ -10,7 +10,10 @@ import { language } from "../constants/language";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { FIRBASE_AUTH, FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
-import { get, ref } from "firebase/database";
+import { get, ref, update } from "firebase/database";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+
 const { width, height } = Dimensions.get("window");
 function HomePage() {
   const [selectLan, setSelectLan] = useState(0);
@@ -20,6 +23,51 @@ function HomePage() {
   const navigation = useNavigation();
   const auth = FIRBASE_AUTH;
   const db = FIREBASE_DATABASE;
+
+  //Notification
+  const [expoPushToken, setExpoPushToken] = React.useState("");
+
+  React.useEffect(() => {
+    registerForPushNotificationsAsync().then((token) =>
+      setExpoPushToken(token)
+    );
+  }, []);
+
+  async function registerForPushNotificationsAsync() {
+    let token;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FF231F7C",
+      });
+    }
+    if (Device.isDevice) {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        alert("Failed to get push token for push notification!");
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log(token);
+      if (auth.currentUser) {
+        const userRef = ref(db, "users/" + auth.currentUser.uid);
+        await update(userRef, { token: token });
+      }
+    } else {
+      alert("Must use physical device for Push Notifications");
+    }
+
+    return token;
+  }
 
   // console.log(auth.currentUser.uid, "auth.currentUser");
 

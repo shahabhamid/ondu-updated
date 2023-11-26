@@ -18,6 +18,8 @@ import { Image } from "react-native";
 import { language } from "../constants/language";
 import axios from "axios";
 import CustomBubble from "../components/bubble-custom";
+import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
+import { get, ref, set } from "firebase/database";
 
 const { width, height } = Dimensions.get("window");
 const numColumns = width > 600 ? 3 : 2;
@@ -26,8 +28,10 @@ export default function Events() {
   const progress = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0)).current;
   const [eventList, setEventList] = React.useState([]);
+  const [eventKeys, setEventKeys] = React.useState([]);
   const [load, setIsLoad] = useState(false);
   const navigation = useNavigation();
+  const db = FIREBASE_DATABASE;
 
   useEffect(() => {
     getLang();
@@ -40,8 +44,15 @@ export default function Events() {
   const getEvents = async () => {
     setIsLoad(true);
     try {
-      const data = await axios.get(`${apis}/events`)
-      setEventList(data.data);
+      // const data = await axios.get(`${apis}/events`)
+      const eventRef= ref(db, 'events');
+      const snapshot = await get(eventRef);
+      // const data= snapshot.ref();
+      const data= snapshot.val();
+      // console.log(Object.keys(data), "data");
+
+      setEventList(Object.values(data));
+      setEventKeys(Object.keys(data));
     } catch (error) {
       Alert.error(error.message)
     }
@@ -114,7 +125,7 @@ export default function Events() {
                         />
                       )}
                       <Text style={styles.fontDes}>{item.name}</Text>
-                      <Text style={styles.fontDes}>{item.user?.username}</Text>
+                      <Text style={styles.fontDes}>{item.username}</Text>
                       <Text style={styles.fontDes}>{item.date}</Text>
                     </View>
                   </View>
