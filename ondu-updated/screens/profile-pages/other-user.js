@@ -13,8 +13,6 @@ import {
 } from "react-native";
 import Colors from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import apis from "../../constants/static-ip";
-import axios from "axios";
 import { FIREBASE_DATABASE } from "../../Firebase/firebaseConfig";
 import { set, get, ref, remove } from "firebase/database";
 

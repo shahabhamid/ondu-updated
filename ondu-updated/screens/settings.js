@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,

@@ -10,9 +10,7 @@ import {
 import React, { useEffect, useState } from "react";
 import Colors from "../constants/colors";
 import UserCard from "../components/userCard";
-import apis from "../constants/static-ip";
 import CustomBubble from "../components/bubble-custom";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 const { width, height } = Dimensions.get("window");
 import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";

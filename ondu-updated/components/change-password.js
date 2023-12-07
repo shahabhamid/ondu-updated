@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import Colors from "../constants/colors";
 import { language } from "../constants/language";
-import apis from "../constants/static-ip";
 const { width, height } = Dimensions.get("window");
 
 function ChangePassword({ navigation, modalVisible, setModalVisible }) {
@@ -24,109 +23,110 @@ function ChangePassword({ navigation, modalVisible, setModalVisible }) {
   const [newPassword, setNewPassword] = React.useState("");
   const [conPassword, setConPassword] = React.useState("");
 
-  const handlePasswordChange = async () => {
-    if (oldPassword === "" || newPassword === "" || conPassword === "") {
-      alert("Please fill all the fields");
-    } else if (newPassword !== conPassword) {
-      alert("Passwords does not match");
-    } else {
-      try {
-        const userData = await AsyncStorage.getItem("user")
-        await axios.post(`${apis}/changePassword`, {
-          username: JSON.parse(userData).username,
-          oldPassword: oldPassword,
-          newPassword: newPassword,
-        })
-        Alert.alert("Password Changed Successfully");
-        AsyncStorage.removeItem("user");
-        navigation.push("Login");
-      } catch (error) {
-        Alert.alert("Wrong Password\n" + error.message);
-      }
-    }
-  };
+  // const handlePasswordChange = async () => {
+  //   if (oldPassword === "" || newPassword === "" || conPassword === "") {
+  //     alert("Please fill all the fields");
+  //   } else if (newPassword !== conPassword) {
+  //     alert("Passwords does not match");
+  //   } else {
+  //     try {
+  //       const userData = await AsyncStorage.getItem("user")
+  //       await axios.post(`${apis}/changePassword`, {
+  //         username: JSON.parse(userData).username,
+  //         oldPassword: oldPassword,
+  //         newPassword: newPassword,
+  //       })
+  //       Alert.alert("Password Changed Successfully");
+  //       AsyncStorage.removeItem("user");
+  //       navigation.push("Login");
+  //     } catch (error) {
+  //       Alert.alert("Wrong Password\n" + error.message);
+  //     }
+  //   }
+  // };
+ 
   useEffect(() => {
     getLang();
   }, []);
   const getLang = async () => {
     setSelectLan(parseInt(await AsyncStorage.getItem("LANG")));
   };
-  return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalVisible}
-      onRequestClose={() => {
-        setModalVisible(!modalVisible);
-      }}
-    >
-      <View style={styles.centeredView}>
-        <View style={styles.modalView}>
-          <Text style={styles.fontDesign}>
-            {selectLan == 0 ? language[18].eng : language[18].arab}
-          </Text>
-          <View style={{ width: "100%" }}>
-            <TextInput
-              style={styles.input}
-              onChangeText={(text) => setOldPassword(text)}
-              placeholder="Enter Old Password"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={styles.input}
-              onChangeText={(text) => setNewPassword(text)}
-              placeholder="Enter New Password"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={styles.input}
-              onChangeText={(text) => setConPassword(text)}
-              placeholder="Enter Confirm Password"
-              autoCorrect={false}
-            />
-          </View>
-          <View style={styles.btns}>
-            <TouchableOpacity
-              style={{
-                width: "40%",
-                height: 50,
-                borderWidth: 0.5,
-                borderRadius: 10,
-                backgroundColor: Colors.white,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-              onPress={() => {
-                setModalVisible(false);
-              }}
-            >
-              <Text>
-                {selectLan == 0 ? language[15].eng : language[15].arab}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                handlePasswordChange();
-              }}
-              style={{
-                width: "40%",
-                height: 50,
-                borderWidth: 0.5,
-                borderRadius: 10,
-                backgroundColor: Colors.brown,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text>
-                {selectLan == 0 ? language[16].eng : language[16].arab}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
+  // return (
+  //   <Modal
+  //     animationType="slide"
+  //     transparent={true}
+  //     visible={modalVisible}
+  //     onRequestClose={() => {
+  //       setModalVisible(!modalVisible);
+  //     }}
+  //   >
+  //     <View style={styles.centeredView}>
+  //       <View style={styles.modalView}>
+  //         <Text style={styles.fontDesign}>
+  //           {selectLan == 0 ? language[18].eng : language[18].arab}
+  //         </Text>
+  //         <View style={{ width: "100%" }}>
+  //           <TextInput
+  //             style={styles.input}
+  //             onChangeText={(text) => setOldPassword(text)}
+  //             placeholder="Enter Old Password"
+  //             autoCorrect={false}
+  //           />
+  //           <TextInput
+  //             style={styles.input}
+  //             onChangeText={(text) => setNewPassword(text)}
+  //             placeholder="Enter New Password"
+  //             autoCorrect={false}
+  //           />
+  //           <TextInput
+  //             style={styles.input}
+  //             onChangeText={(text) => setConPassword(text)}
+  //             placeholder="Enter Confirm Password"
+  //             autoCorrect={false}
+  //           />
+  //         </View>
+  //         <View style={styles.btns}>
+  //           <TouchableOpacity
+  //             style={{
+  //               width: "40%",
+  //               height: 50,
+  //               borderWidth: 0.5,
+  //               borderRadius: 10,
+  //               backgroundColor: Colors.white,
+  //               justifyContent: "center",
+  //               alignItems: "center",
+  //             }}
+  //             onPress={() => {
+  //               setModalVisible(false);
+  //             }}
+  //           >
+  //             <Text>
+  //               {selectLan == 0 ? language[15].eng : language[15].arab}
+  //             </Text>
+  //           </TouchableOpacity>
+  //           <TouchableOpacity
+  //             onPress={() => {
+  //               handlePasswordChange();
+  //             }}
+  //             style={{
+  //               width: "40%",
+  //               height: 50,
+  //               borderWidth: 0.5,
+  //               borderRadius: 10,
+  //               backgroundColor: Colors.brown,
+  //               justifyContent: "center",
+  //               alignItems: "center",
+  //             }}
+  //           >
+  //             <Text>
+  //               {selectLan == 0 ? language[16].eng : language[16].arab}
+  //             </Text>
+  //           </TouchableOpacity>
+  //         </View>
+  //       </View>
+  //     </View>
+  //   </Modal>
+  // );
 }
 export default ChangePassword;
 

@@ -10,13 +10,10 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 // import * as ImagePicker from "expo-image-picker";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import Colors from "../../constants/colors";
-import apis from "../../constants/static-ip";
 import CustomBubble from "../../components/bubble-custom";
 import { FIREBASE_DATABASE } from "../../Firebase/firebaseConfig";
 import { FIREBASE_MESSAGING } from "../../Firebase/firebaseConfig";

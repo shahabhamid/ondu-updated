@@ -16,12 +16,8 @@ import {
 } from "react-native";
 import Colors from "../constants/colors";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-
-import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const socket = io("http://192.168.100.7:3002");
-import apis from "../constants/static-ip";
 import { ScrollView } from "react-native";
 import { language } from "../constants/language";
 import CustomBubble from "../components/bubble-custom";

@@ -11,12 +11,10 @@ import {
 } from "react-native";
 import Colors from "../constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import apis from "../constants/static-ip";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { Image } from "react-native";
 import { language } from "../constants/language";
-import axios from "axios";
 import CustomBubble from "../components/bubble-custom";
 import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";
 import { get, ref, set } from "firebase/database";

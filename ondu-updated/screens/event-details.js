@@ -17,15 +17,12 @@ import {
 } from "react-native";
 import Colors from "../constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
 
-const socket = io("http://192.168.100.7:3002");
-import apis from "../constants/static-ip";
 import CustomBubble from "../components/bubble-custom";
 import axios from "axios";
 import { FIREBASE_DATABASE } from "../Firebase/firebaseConfig";

@@ -11,17 +11,13 @@ import Colors from "../constants/colors";
 import * as React from "react";
 import PrimaryButton from "../components/primary-button";
 import LinearGradientComponent from "../components/linear-gradient-component";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from 'axios'
-import apis from "../constants/static-ip";
 import { Image } from "react-native";
 import Toast from 'react-native-root-toast'
 import { FIRBASE_AUTH } from "../Firebase/firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
-// import { AUTH } from "../Firebase/firebaseConfig";
+import { signInWithEmailAndPassword, initializeAuth, getReactNativePersistence, getAuth } from "firebase/auth";
 
 const { width, height } = Dimensions.get("window");
-const size = Math.min(width, height) - 1;
+
 export default function LoginScreen({ navigation }) {
 
   const [email, setEmail] = React.useState("");
@@ -29,9 +25,6 @@ export default function LoginScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = React.useState(null);
   const passRef = React.useRef();
   const auth = FIRBASE_AUTH;
-
-  // const credential = AUTH;
-  // console.log(credential, 'credential')
 
   const loginUser = async () =>{
     if (email == "" || password == "") {
@@ -44,8 +37,8 @@ export default function LoginScreen({ navigation }) {
         const data = await signInWithEmailAndPassword(auth, email, password)
         // console.log(data, 'data')
         Toast.hide(toast);
-        setEmail("");
-        setPassword("");
+        setEmail('');
+        setPassword('');
         navigation.navigate("HomePage");
       } catch (error) {
         console.log(JSON.stringify(error), 'Error - Login Screen');
@@ -68,6 +61,7 @@ export default function LoginScreen({ navigation }) {
         <TextInput
           onSubmitEditing={() => passRef?.current?.focus()}
           style={styles.input}
+          value={email}
           onPressIn={() => setErrorMsg(null)}
           onChangeText={(text) => setEmail(text)}
           placeholder="Email"
@@ -80,6 +74,7 @@ export default function LoginScreen({ navigation }) {
             loginUser();
           }}
           style={styles.input}
+          value={password}
           onPressIn={() => setErrorMsg(null)}
           onChangeText={(text) => setPassword(text)}
           placeholder="Password"

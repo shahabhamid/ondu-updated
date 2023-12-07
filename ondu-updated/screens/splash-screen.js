@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Image, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import LinearGradientComponent from "../components/linear-gradient-component";
 import Colors from "../constants/colors";
 

@@ -12,8 +12,6 @@ import Colors from "../constants/colors";
 import * as React from "react";
 import PrimaryButton from "../components/primary-button";
 import LinearGradientComponent from "../components/linear-gradient-component";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import apis from "../constants/static-ip";
 import { Image } from "react-native";
 import Toast from "react-native-root-toast";
 import { FIRBASE_AUTH, FIREBASE_DATABASE } from "../Firebase/firebaseConfig";

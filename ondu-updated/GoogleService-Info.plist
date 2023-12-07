@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDHtJJ1J9TSByZSLS8HwXdcklPjjZsNsB4</string>
+	<key>GCM_SENDER_ID</key>
+	<string>643836859984</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.ondu.onduupdated</string>
+	<key>PROJECT_ID</key>
+	<string>ondu-a5554</string>
+	<key>STORAGE_BUCKET</key>
+	<string>ondu-a5554.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:643836859984:ios:16a61c375ade2c7db62355</string>
+	<key>DATABASE_URL</key>
+	<string>https://ondu-a5554-default-rtdb.firebaseio.com</string>
+</dict>
+</plist>
